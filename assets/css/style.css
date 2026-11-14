@@ -3084,15 +3084,6 @@ body:not(.dark-theme) .calc-est-wealth-desc {
 }
 
 
-/* ===================================================
-   TEMPORARILY HIDE LANGUAGE TOGGLE BUTTON (Keep code intact)
-   =================================================== */
-#lang-toggle-btn,
-#mobile-lang-btn,
-.lang-toggle-btn {
-  display: none !important;
-}
-
 
 /* ===================================================
    MOBILE RESPONSIVE FOUNDING 100 ROAD TRACK (Pixel Perfect)
