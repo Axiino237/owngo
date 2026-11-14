@@ -244,8 +244,9 @@ body {
 }
 
 .navbar .container {
-  max-width: 1440px;
-  padding: 0 20px;
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0 24px !important;
 }
 
 .navbar.scrolled {
@@ -257,7 +258,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -300,7 +301,7 @@ body {
   gap: 2px;
 }
 
-@media (max-width: 1260px) {
+@media (max-width: 1380px) {
   .nav-menu {
     display: none !important;
   }
@@ -335,6 +336,7 @@ body {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Language Toggle Button */
@@ -396,10 +398,11 @@ body {
 /* Primary Nav CTA Button */
 #nav-primary-cta {
   height: 38px;
-  padding: 0 12px;
+  padding: 0 14px;
   font-size: 0.82rem;
   gap: 6px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @media (max-width: 992px) {
@@ -421,9 +424,10 @@ body {
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-@media (max-width: 1260px) {
+@media (max-width: 1380px) {
   .hamburger-btn {
     display: inline-flex !important;
   }
