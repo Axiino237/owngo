@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Database & runtime files
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.bak
+
+# Deployment packages & archives
+*.tar.gz
+*.zip
+owngo_deploy.tar.gz
+
+# Local scratch / test scripts
+inspect_*.py
+update_*.py
+remove_loading_text.py
+translate_everything.py
+test_*.py
+
+# Temporary screenshots & verification images in root
+/*_screenshot.png
+/mobile_*.png
+/redesign_*.png
+/verify_*.png
+/test_*.png
+/exact_spot_crop.jpg
+/spots_centered.jpg
+
+# Unused heavy generated AI images (>90MB)
+assets/images/Gemini_Generated_Image_*.png
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
