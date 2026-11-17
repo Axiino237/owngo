@@ -441,7 +441,9 @@ window.OWNGO_TRANSLATIONS = {
     "popt_exp_4": "Fresher / Eager to Learn EV",
     "btn_pilot_submit": "Submit Pilot Application (₹30,000/Mo)",
     "form_pilot_sec_note": "100% Free Application. No deposit or advance required from EV Pilots.",
-    "ola_official_partner_pill": "Official OLA Fleet Partner"
+    "ola_official_partner_pill": "Official OLA Fleet Partner",
+    "link_to_pilot": "Looking for an EV Pilot job (₹30,000/mo salary)? Apply here ↓",
+    "link_to_partner": "Looking to partner with ₹1 Lakh? Apply as Fleet Partner ↑"
   },
   "ta": {
     "nav_home": "முகப்பு",
@@ -885,6 +887,8 @@ window.OWNGO_TRANSLATIONS = {
     "popt_exp_4": "புதியவர் / EV ஓட்ட விருப்பம்",
     "btn_pilot_submit": "பைலட் வேலைக்கு விண்ணப்பிக்க (₹30,000/மாதம்)",
     "form_pilot_sec_note": "100% இலவச விண்ணப்பம். ஓட்டுநர்களிடம் இருந்து எவ்வித முன்வைப்புத் தொகையும் பெறப்படாது.",
-    "ola_official_partner_pill": "அதிகாரப்பூர்வ OLA ஃப்ளீட் பார்ட்னர்"
+    "ola_official_partner_pill": "அதிகாரப்பூர்வ OLA ஃப்ளீட் பார்ட்னர்",
+    "link_to_pilot": "EV பைலட் வேலைக்கு விண்ணப்பிக்க விரும்புகிறீர்களா (மாத ஊதியம் ₹30,000)? இங்கே விண்ணப்பியுங்கள் ↓",
+    "link_to_partner": "₹1 லட்சத்தில் ஃப்ளீட் பார்ட்னராக இணைய விரும்புகிறீர்களா? இங்கே விண்ணப்பியுங்கள் ↑"
   }
 };

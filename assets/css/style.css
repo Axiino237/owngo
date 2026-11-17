@@ -2222,6 +2222,7 @@ body:not(.dark-theme) .progress-road-track {
    =================================================== */
 .booking-section {
   background: var(--bg-surface-subtle);
+  scroll-margin-top: 90px;
 }
 
 /* Application Role Switcher (Partner vs Pilot) */

@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initBookingForm();
   initPilotBookingForm();
   initPilotNavCta();
+  initPartnerNavCta();
   initLanguageToggle();
   initScrollAnimations();
 });
@@ -736,12 +737,9 @@ function initPilotNavCta() {
   const pilotMobileBtn = document.getElementById('mobile-pilot-btn');
   const handlePilotClick = (e) => {
     e.preventDefault();
-    if (window.switchApplyRole) {
-      window.switchApplyRole('pilot');
-    }
-    const applySec = document.getElementById('apply');
-    if (applySec) {
-      applySec.scrollIntoView({ behavior: 'smooth' });
+    const pilotSec = document.getElementById('pilot-apply');
+    if (pilotSec) {
+      pilotSec.scrollIntoView({ behavior: 'smooth' });
     }
     const drawer = document.getElementById('mobile-drawer');
     if (drawer && drawer.classList.contains('open')) {
@@ -754,10 +752,22 @@ function initPilotNavCta() {
   // Check URL hash on page load
   if (window.location.hash === '#pilot-apply') {
     setTimeout(() => {
-      if (window.switchApplyRole) window.switchApplyRole('pilot');
-      const applySec = document.getElementById('apply');
-      if (applySec) applySec.scrollIntoView({ behavior: 'smooth' });
+      const pilotSec = document.getElementById('pilot-apply');
+      if (pilotSec) pilotSec.scrollIntoView({ behavior: 'smooth' });
     }, 300);
+  }
+}
+
+function initPartnerNavCta() {
+  const partnerNavBtn = document.getElementById('nav-primary-cta');
+  if (partnerNavBtn) {
+    partnerNavBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const applySec = document.getElementById('apply');
+      if (applySec) {
+        applySec.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
   }
 }
 
