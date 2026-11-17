@@ -405,8 +405,44 @@ body {
   flex-shrink: 0;
 }
 
+/* Pilot Nav CTA Button */
+.btn-pilot-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  color: #facc15;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-pilot-cta:hover {
+  background: rgba(250, 204, 21, 0.22);
+  border-color: #facc15;
+  color: #fef08a;
+  transform: translateY(-1px);
+}
+
+.btn-pilot-cta i,
+.btn-pilot-cta svg {
+  width: 16px;
+  height: 16px;
+  stroke: #facc15;
+}
+
 @media (max-width: 992px) {
-  #nav-primary-cta {
+  #nav-primary-cta,
+  #nav-pilot-cta {
     display: none !important;
   }
 }
@@ -2186,6 +2222,94 @@ body:not(.dark-theme) .progress-road-track {
    =================================================== */
 .booking-section {
   background: var(--bg-surface-subtle);
+}
+
+/* Application Role Switcher (Partner vs Pilot) */
+.apply-role-switcher {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 680px;
+  margin: 0 auto 32px auto;
+}
+
+.role-tab {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+}
+
+.role-tab:hover {
+  border-color: var(--brand-emerald-border);
+  transform: translateY(-2px);
+}
+
+.role-tab.active {
+  background: var(--bg-surface);
+  border-color: var(--brand-emerald);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+}
+
+.role-tab#tab-btn-pilot.active {
+  border-color: #facc15;
+  box-shadow: 0 4px 20px rgba(250, 204, 21, 0.2);
+}
+
+.role-tab i,
+.role-tab svg {
+  width: 26px;
+  height: 26px;
+  stroke: var(--brand-emerald);
+  flex-shrink: 0;
+}
+
+.role-tab#tab-btn-pilot i,
+.role-tab#tab-btn-pilot svg {
+  stroke: #facc15;
+}
+
+.role-tab-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.role-tab-title {
+  font-family: var(--font-heading);
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.role-tab.active .role-tab-title {
+  color: var(--brand-emerald);
+}
+
+.role-tab#tab-btn-pilot.active .role-tab-title {
+  color: #facc15;
+}
+
+.role-tab-sub {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .apply-role-switcher {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .role-tab {
+    padding: 12px 16px;
+  }
 }
 
 .booking-card {

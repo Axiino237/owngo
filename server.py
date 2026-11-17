@@ -114,6 +114,21 @@ def init_db():
     )
     """)
 
+    # 4. EV Pilot Applications Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS pilot_leads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        license_type TEXT,
+        preferred_area TEXT,
+        experience TEXT,
+        status TEXT DEFAULT 'NEW',
+        email_status TEXT DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -180,6 +195,62 @@ Asset Security: 100% Registered in Investor Name
 
     return True
 
+def send_pilot_email_notification(pilot_id: int, name: str, phone: str, license_type: str, preferred_area: str, experience: str) -> bool:
+    subject = f"🛺 NEW EV PILOT APPLICATION: {name} - {license_type} ({preferred_area})"
+    
+    body = f"""
+=====================================================
+OWNGO MOBILITY - NEW EV PILOT APPLICATION
+=====================================================
+Pilot ID        : #{pilot_id}
+Pilot Name      : {name}
+Phone Number    : {phone}
+License Type    : {license_type}
+Preferred Hub   : {preferred_area}
+Driving Exp     : {experience}
+Guaranteed Pay  : Rs. 30,000 / Month Fixed Salary + Incentives
+Date / Time     : {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}
+=====================================================
+Fleet Vehicles  : Bajaj GoGo P7012 EV Auto (Ola, Uber & Rapido)
+Safety ADAS     : Cautio Dual-Lens AI Dashcam & SOS Alert
+=====================================================
+    """
+
+    email_status = "LOGGED_LOCAL"
+
+    if SMTP_USER and SMTP_PASS:
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = SMTP_USER
+            msg["To"] = NOTIFICATION_EMAIL
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain"))
+
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+            server.quit()
+            email_status = "SENT_SMTP"
+        except Exception as e:
+            print(f"[Email Error] Failed to send pilot SMTP email: {e}")
+            email_status = f"FAILED: {str(e)[:40]}"
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO email_logs (lead_id, recipient, subject, body, status) VALUES (?, ?, ?, ?, ?)",
+            (pilot_id, NOTIFICATION_EMAIL, subject, body, email_status)
+        )
+        cur.execute("UPDATE pilot_leads SET email_status = ? WHERE id = ?", (email_status, pilot_id))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[DB Log Error]: {e}")
+
+    return True
+
 # ===================================================
 # PYDANTIC MODELS
 # ===================================================
@@ -189,6 +260,13 @@ class RegisterLeadRequest(BaseModel):
     autos: int = 1
     city: str
     cibil: Optional[str] = "Good (700 - 749)"
+
+class RegisterPilotRequest(BaseModel):
+    name: str
+    phone: str
+    license_type: Optional[str] = "Commercial Auto Driver Badge"
+    preferred_area: Optional[str] = "Central Chennai"
+    experience: Optional[str] = "2 to 5 Years"
 
 # ===================================================
 # REST API ENDPOINTS
@@ -355,6 +433,65 @@ async def register_investor(lead: RegisterLeadRequest):
         "message": f"Application #{lead_id} successfully registered in database and notification sent!"
     }
 
+@app.post("/api/register-pilot")
+async def register_pilot(pilot: RegisterPilotRequest):
+    """Registers an EV Pilot application into SQLite and triggers email notification"""
+    if not pilot.name or not pilot.phone:
+        raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO pilot_leads (name, phone, license_type, preferred_area, experience)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (pilot.name.strip(), pilot.phone.strip(), pilot.license_type, pilot.preferred_area, pilot.experience)
+    )
+    pilot_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    send_pilot_email_notification(
+        pilot_id=pilot_id,
+        name=pilot.name,
+        phone=pilot.phone,
+        license_type=pilot.license_type,
+        preferred_area=pilot.preferred_area,
+        experience=pilot.experience
+    )
+
+    return {
+        "success": True,
+        "pilot_id": pilot_id,
+        "message": f"Pilot Application #{pilot_id} successfully registered in database and notification sent!"
+    }
+
+@app.get("/api/pilot-leads")
+async def list_pilot_leads():
+    """Returns all registered pilot applications from database"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, phone, license_type, preferred_area, experience, status, created_at FROM pilot_leads ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    pilots = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "phone": r[2],
+            "license_type": r[3],
+            "preferred_area": r[4],
+            "experience": r[5],
+            "status": r[6],
+            "created_at": r[7]
+        }
+        for r in rows
+    ]
+    return {"pilots": pilots, "total_pilots": len(pilots)}
+
 @app.get("/api/leads")
 async def list_leads():
     """Returns all registered leads from database"""
@@ -413,9 +550,12 @@ async def admin_portal():
     unique_devices = cur.fetchone()[0]
     cur.execute("SELECT id, name, phone, autos_count, city, cibil_score, email_status, created_at FROM leads ORDER BY id DESC")
     leads = cur.fetchall()
+
+    cur.execute("SELECT id, name, phone, license_type, preferred_area, experience, status, created_at FROM pilot_leads ORDER BY id DESC")
+    pilots = cur.fetchall()
     conn.close()
 
-    rows_html = "".join([
+    partner_rows_html = "".join([
         f"""
         <tr>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; font-weight:bold; color:#10b981;'>#{r[0]}</td>
@@ -429,14 +569,30 @@ async def admin_portal():
         </tr>
         """
         for r in leads
-    ]) or "<tr><td colspan='8' style='padding:24px; text-align:center; color:#64748b;'>No investor applications received yet. Submit one from the landing page!</td></tr>"
+    ]) or "<tr><td colspan='8' style='padding:24px; text-align:center; color:#64748b;'>No investor applications received yet.</td></tr>"
+
+    pilot_rows_html = "".join([
+        f"""
+        <tr>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; font-weight:bold; color:#facc15;'>#{r[0]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#fff; font-weight:600;'>{r[1]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#94a3b8;'>{r[2]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#38bdf8; font-weight:600;'>{r[3]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#cbd5e1;'>{r[4]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#a78bfa;'>{r[5]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140;'><span style='background:rgba(250,204,21,0.15); color:#facc15; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:bold;'>{r[6]}</span></td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#64748b; font-size:13px;'>{r[7]}</td>
+        </tr>
+        """
+        for r in pilots
+    ]) or "<tr><td colspan='8' style='padding:24px; text-align:center; color:#64748b;'>No EV Pilot applications received yet.</td></tr>"
 
     return f"""
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>OWNGO Mobility - Investor Admin Dashboard</title>
+        <title>OWNGO Mobility - Lead &amp; Pilot Management Dashboard</title>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
         <style>
             body {{ font-family: 'Plus Jakarta Sans', sans-serif; background:#070a0e; color:#f8fafc; margin:0; padding:30px; }}
@@ -458,37 +614,39 @@ async def admin_portal():
             </div>
             <div>
                 <a href="/" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; margin-right:10px;">&larr; View Website</a>
-                <a href="/api/leads" target="_blank" class="btn" style="background:#facc15; color:#000;">Download JSON</a>
+                <a href="/api/leads" target="_blank" class="btn" style="background:#facc15; color:#000; margin-right:8px;">Partner JSON</a>
+                <a href="/api/pilot-leads" target="_blank" class="btn" style="background:#38bdf8; color:#000;">Pilot JSON</a>
             </div>
         </div>
 
         <div class="stats-grid">
             <div class="stat-box">
-                <div class="stat-lbl">Total Registered Leads</div>
+                <div class="stat-lbl">Fleet Partner Leads</div>
                 <div class="stat-val">{len(leads)}</div>
-                <div style="font-size:12px; color:#94a3b8;">Stored in SQLite Database</div>
+                <div style="font-size:12px; color:#94a3b8;">₹1 Lakh Investors</div>
             </div>
-            <div class="stat-box">
+            <div class="stat-box" style="border-color: rgba(250,204,21,0.25);">
+                <div class="stat-lbl">EV Pilot Applicants</div>
+                <div class="stat-val" style="color:#facc15;">{len(pilots)}</div>
+                <div style="font-size:12px; color:#94a3b8;">₹30,000/Mo Salary Pilots</div>
+            </div>
+            <div class="stat-box" style="border-color: rgba(6,182,212,0.25);">
                 <div class="stat-lbl">Unique Device Views</div>
-                <div class="stat-val" style="color:#22c55e;">{unique_devices}</div>
+                <div class="stat-val" style="color:#06b6d4;">{unique_devices}</div>
                 <div style="font-size:12px; color:#94a3b8;">Strict: 1 Device = 1 View Only</div>
             </div>
             <div class="stat-box">
-                <div class="stat-lbl">Active Live Devices</div>
-                <div class="stat-val" style="color:#06b6d4;">{max(1, (unique_devices % 5) + 1)}</div>
-                <div style="font-size:12px; color:#94a3b8;">Concurrent verified sessions</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-lbl">Email Notification Engine</div>
-                <div class="stat-val" style="color:#a855f7; font-size:22px; margin:12px 0;">ACTIVE (Auto-Log)</div>
+                <div class="stat-lbl">Notification Engine</div>
+                <div class="stat-val" style="color:#a855f7; font-size:20px; margin:12px 0;">ACTIVE (Auto-Log)</div>
                 <div style="font-size:12px; color:#94a3b8;">Target: {NOTIFICATION_EMAIL}</div>
             </div>
         </div>
 
+        <!-- Section 1: Partner Leads -->
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#fff;">All Registered Investor Applications</h2>
-                <span style="font-size:13px; color:#94a3b8;">Auto-refreshed upon submission</span>
+                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#10b981;">👥 Registered Fleet Partner Applications (₹1 Lakh)</h2>
+                <span style="font-size:13px; color:#94a3b8;">Total: {len(leads)}</span>
             </div>
             <table>
                 <thead>
@@ -499,12 +657,37 @@ async def admin_portal():
                         <th>Autos Count</th>
                         <th>Target City</th>
                         <th>CIBIL Range</th>
-                        <th>Email Notification</th>
+                        <th>Notification</th>
                         <th>Date &amp; Time</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {rows_html}
+                    {partner_rows_html}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 2: EV Pilot Applications -->
+        <div class="card" style="border-color: rgba(250,204,21,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#facc15;">🛺 Registered EV Pilot Applications (₹30,000/Mo Salary)</h2>
+                <span style="font-size:13px; color:#94a3b8;">Total: {len(pilots)}</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pilot ID</th>
+                        <th>Pilot Name</th>
+                        <th>Phone / WhatsApp</th>
+                        <th>License Type</th>
+                        <th>Preferred Operating Hub</th>
+                        <th>Experience</th>
+                        <th>Status</th>
+                        <th>Date &amp; Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {pilot_rows_html}
                 </tbody>
             </table>
         </div>

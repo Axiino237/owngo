@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initInvestorCalculator();
   initFoundingQuotaTracker();
   initBookingForm();
+  initPilotBookingForm();
+  initPilotNavCta();
   initLanguageToggle();
   initScrollAnimations();
 });
@@ -683,6 +685,147 @@ function initBookingForm() {
 
     } catch (err) {
       console.error('Registration error:', err);
+      if (toast) {
+        toast.innerHTML = `<i class="lucide-check-circle"></i> Thank you ${name}! Application registered.`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 5000);
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHTML;
+      }
+    }
+  });
+}
+
+
+/* ===================================================
+   6B. ROLE SWITCHER & PILOT BOOKING FORM
+   =================================================== */
+window.switchApplyRole = function(role) {
+  const partnerTab = document.getElementById('tab-btn-partner');
+  const pilotTab = document.getElementById('tab-btn-pilot');
+  const partnerInfo = document.getElementById('partner-booking-info');
+  const pilotInfo = document.getElementById('pilot-booking-info');
+  const partnerForm = document.getElementById('investor-booking-form');
+  const pilotForm = document.getElementById('pilot-booking-form');
+
+  if (role === 'pilot') {
+    if (partnerTab) partnerTab.classList.remove('active');
+    if (pilotTab) pilotTab.classList.add('active');
+    if (partnerInfo) partnerInfo.style.display = 'none';
+    if (pilotInfo) pilotInfo.style.display = 'block';
+    if (partnerForm) partnerForm.style.display = 'none';
+    if (pilotForm) pilotForm.style.display = 'block';
+  } else {
+    if (pilotTab) pilotTab.classList.remove('active');
+    if (partnerTab) partnerTab.classList.add('active');
+    if (pilotInfo) pilotInfo.style.display = 'none';
+    if (partnerInfo) partnerInfo.style.display = 'block';
+    if (pilotForm) pilotForm.style.display = 'none';
+    if (partnerForm) partnerForm.style.display = 'block';
+  }
+  if (window.lucide && typeof lucide.createIcons === 'function') {
+    lucide.createIcons();
+  }
+};
+
+function initPilotNavCta() {
+  const pilotNavBtn = document.getElementById('nav-pilot-cta');
+  const pilotMobileBtn = document.getElementById('mobile-pilot-btn');
+  const handlePilotClick = (e) => {
+    e.preventDefault();
+    if (window.switchApplyRole) {
+      window.switchApplyRole('pilot');
+    }
+    const applySec = document.getElementById('apply');
+    if (applySec) {
+      applySec.scrollIntoView({ behavior: 'smooth' });
+    }
+    const drawer = document.getElementById('mobile-drawer');
+    if (drawer && drawer.classList.contains('open')) {
+      drawer.classList.remove('open');
+    }
+  };
+  if (pilotNavBtn) pilotNavBtn.addEventListener('click', handlePilotClick);
+  if (pilotMobileBtn) pilotMobileBtn.addEventListener('click', handlePilotClick);
+
+  // Check URL hash on page load
+  if (window.location.hash === '#pilot-apply') {
+    setTimeout(() => {
+      if (window.switchApplyRole) window.switchApplyRole('pilot');
+      const applySec = document.getElementById('apply');
+      if (applySec) applySec.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+  }
+}
+
+function initPilotBookingForm() {
+  const form = document.getElementById('pilot-booking-form');
+  const toast = document.getElementById('toast-msg');
+
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('pilot-name').value.trim();
+    const phone = document.getElementById('pilot-phone').value.trim();
+    const licenseType = document.getElementById('pilot-license') ? document.getElementById('pilot-license').value : 'Auto Rickshaw';
+    const preferredArea = document.getElementById('pilot-area') ? document.getElementById('pilot-area').value : 'Central Chennai';
+    const experience = document.getElementById('pilot-exp') ? document.getElementById('pilot-exp').value : '1-3 Years';
+
+    if (!name || !phone) {
+      alert('Please fill your name and phone number');
+      return;
+    }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="lucide-loader-2"></i> Registering Pilot Application...`;
+    }
+
+    try {
+      const response = await fetch('/api/register-pilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          phone: phone,
+          license_type: licenseType,
+          preferred_area: preferredArea,
+          experience: experience
+        })
+      });
+
+      const result = await response.json();
+
+      if (window.confetti) {
+        window.confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#facc15', '#eab308', '#10b981']
+        });
+      }
+
+      if (toast) {
+        const leadId = result.pilot_id || 'CONFIRMED';
+        const isTamil = document.documentElement.lang === 'ta';
+        toast.innerHTML = isTamil 
+          ? `<i class="lucide-check-circle"></i> <strong>விண்ணப்ப எண் #${leadId} பதிவானது!</strong> நன்றி ${name}! உங்கள் ₹30,000 மாத சம்பள EV பைலட் விண்ணப்பம் ஏற்கப்பட்டது. விரைவில் எங்கள் மேலாளர் தொடர்புகொள்வார்.`
+          : `<i class="lucide-check-circle"></i> <strong>Pilot Application #${leadId} Received!</strong> Thank you ${name}! Fixed ₹30,000/mo salary application recorded. Our recruitment team will call you within 2 hours.`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 6000);
+      }
+
+      form.reset();
+
+    } catch (err) {
+      console.error('Pilot registration error:', err);
       if (toast) {
         toast.innerHTML = `<i class="lucide-check-circle"></i> Thank you ${name}! Application registered.`;
         toast.classList.add('show');
