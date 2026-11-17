@@ -426,7 +426,7 @@ function initStudio360() {
       name: '3D Studio Turntable',
       badge: '360° Studio Platform',
       image: 'assets/images/hero-turntable.jpg',
-      desc: 'Dynamic 3/4 perspective of the Bajaj GOGO EV Auto on the glowing circular studio turntable. Demonstrates balanced vehicle proportions and aerodynamic styling.',
+      desc: 'Dynamic 3/4 perspective of the Bajaj EV Auto on the glowing circular studio turntable. Demonstrates balanced vehicle proportions and aerodynamic styling.',
       specs: [
         { label: 'Chassis Type', val: 'Monocoque Tubular' },
         { label: 'Ground Clearance', val: '180 mm Unladen' },
