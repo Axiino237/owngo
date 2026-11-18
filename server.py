@@ -33,6 +33,207 @@ SMTP_USER = os.getenv("SMTP_USER", "") # Set your email
 SMTP_PASS = os.getenv("SMTP_PASS", "") # Set your app password / token
 NOTIFICATION_EMAIL = os.getenv("NOTIFICATION_EMAIL", "info@owngo.in")
 
+# Admin Authentication Credentials
+ADMIN_EMAIL = "info@owngo.in"
+ADMIN_PASSWORD = "Login@owngo"
+ADMIN_COOKIE_NAME = "owngo_admin_session"
+ADMIN_SESSION_TOKEN = hashlib.sha256(f"{ADMIN_EMAIL}:{ADMIN_PASSWORD}:owngo_salt_2026".encode()).hexdigest()
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+def is_admin_authenticated(request: Request) -> bool:
+    token = request.cookies.get(ADMIN_COOKIE_NAME)
+    return token == ADMIN_SESSION_TOKEN
+
+def get_admin_login_html(error_msg: str = ""):
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OWNGO Admin Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link href="assets/images/logo-transparent.png" rel="icon" type="image/png">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 50% 30%, #0d1e17 0%, #060b0e 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }}
+        .login-card {{
+            background: #0f1722;
+            border: 1px solid rgba(0, 230, 153, 0.28);
+            border-radius: 20px;
+            padding: 36px 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.7), 0 0 35px rgba(0,230,153,0.12);
+            text-align: center;
+        }}
+        .brand-logo {{
+            height: 48px;
+            margin-bottom: 18px;
+            display: inline-block;
+        }}
+        .login-title {{
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 6px;
+        }}
+        .login-sub {{
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }}
+        .form-group {{
+            margin-bottom: 18px;
+            text-align: left;
+        }}
+        .form-label {{
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .form-input {{
+            width: 100%;
+            padding: 12px 14px;
+            background: #141f2e;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }}
+        .form-input:focus {{
+            border-color: #00e699;
+            box-shadow: 0 0 0 3px rgba(0,230,153,0.15);
+        }}
+        .error-banner {{
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 8px;
+            color: #f87171;
+            font-size: 13px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            display: none;
+            text-align: left;
+        }}
+        .btn-submit {{
+            width: 100%;
+            padding: 13px;
+            background: #00e699;
+            color: #04200f;
+            border: none;
+            border-radius: 30px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,230,153,0.3);
+            transition: all 0.2s;
+            margin-top: 6px;
+        }}
+        .btn-submit:hover {{
+            background: #00ffaa;
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(0,230,153,0.45);
+        }}
+        .footer-note {{
+            margin-top: 20px;
+            font-size: 12px;
+            color: #64748b;
+        }}
+        .back-link {{
+            color: #94a3b8;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 14px;
+            font-size: 13px;
+        }}
+        .back-link:hover {{ color: #00e699; }}
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <img src="assets/images/logo-transparent.png" alt="OWNGO" class="brand-logo">
+        <h1 class="login-title">Admin Security Portal</h1>
+        <p class="login-sub">Enter authorized credentials to manage fleet leads and applications.</p>
+        
+        <div id="error-banner" class="error-banner"></div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label class="form-label" for="login-email">Authorized Email</label>
+                <input class="form-input" id="login-email" type="email" value="info@owngo.in" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="login-password">Password</label>
+                <input class="form-input" id="login-password" type="password" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button class="btn-submit" id="btn-submit" type="submit">Sign In to Dashboard →</button>
+        </form>
+
+        <a href="/" class="back-link">← Return to Public Website</a>
+        <div class="footer-note">OWNGO Mobility Private Limited • Official Fleet Admin</div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {{
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            const err = document.getElementById('error-banner');
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+            err.style.display = 'none';
+
+            try {{
+                const res = await fetch('/api/admin/login', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ email, password }})
+                }});
+                const data = await res.json();
+                if (res.ok && data.success) {{
+                    window.location.reload();
+                }} else {{
+                    err.textContent = data.message || 'Invalid email or password. Please try again.';
+                    err.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Sign In to Dashboard →';
+                }}
+            }} catch (error) {{
+                err.textContent = 'Network error. Please try again.';
+                err.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Sign In to Dashboard →';
+            }}
+        }});
+    </script>
+</body>
+</html>
+"""
+
+
 # Initialize FastAPI
 app = FastAPI(title="OWNGO Mobility API", version="1.0.0")
 
@@ -469,7 +670,9 @@ async def register_pilot(pilot: RegisterPilotRequest):
     }
 
 @app.get("/api/pilot-leads")
-async def list_pilot_leads():
+async def list_pilot_leads(request: Request):
+    if not is_admin_authenticated(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
     """Returns all registered pilot applications from database"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -493,7 +696,9 @@ async def list_pilot_leads():
     return {"pilots": pilots, "total_pilots": len(pilots)}
 
 @app.get("/api/leads")
-async def list_leads():
+async def list_leads(request: Request):
+    if not is_admin_authenticated(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
     """Returns all registered leads from database"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -540,10 +745,55 @@ async def list_sent_emails():
     return {"emails": emails}
 
 # ===================================================
+
+# ===================================================
+# ADMIN AUTH & DATA MANAGEMENT ROUTES
+# ===================================================
+@app.post("/api/admin/login")
+async def api_admin_login(creds: AdminLoginRequest):
+    if creds.email.strip().lower() == ADMIN_EMAIL.lower() and creds.password == ADMIN_PASSWORD:
+        resp = JSONResponse({"success": True, "message": "Login successful"})
+        resp.set_cookie(
+            key=ADMIN_COOKIE_NAME,
+            value=ADMIN_SESSION_TOKEN,
+            max_age=86400 * 7, # 7 days
+            httponly=True,
+            samesite="lax"
+        )
+        return resp
+    return JSONResponse(
+        {"success": False, "message": "Invalid email or password. Please verify your credentials."},
+        status_code=401
+    )
+
+@app.get("/admin/logout")
+async def admin_logout():
+    resp = HTMLResponse("<script>window.location.href='/admin';</script>")
+    resp.delete_cookie(key=ADMIN_COOKIE_NAME)
+    return resp
+
+@app.post("/api/admin/clear-leads")
+async def api_clear_leads(request: Request):
+    if not is_admin_authenticated(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM leads")
+    cur.execute("DELETE FROM pilot_leads")
+    try:
+        cur.execute("DELETE FROM sqlite_sequence WHERE name IN ('leads', 'pilot_leads')")
+    except Exception:
+        pass
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "All leads data removed successfully"}
+
 # ADMIN DASHBOARD ROUTE (/admin)
 # ===================================================
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_portal():
+async def admin_portal(request: Request):
+    if not is_admin_authenticated(request):
+        return HTMLResponse(get_admin_login_html())
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT COUNT(DISTINCT device_id) FROM visitors WHERE device_id IS NOT NULL AND device_id != ''")
@@ -612,10 +862,11 @@ async def admin_portal():
                 <h1 style="font-family:'Outfit'; font-size:28px; margin:0; color:#fff;">⚡ OWNGO Admin &amp; Lead Management Portal</h1>
                 <p style="color:#94a3b8; margin:4px 0 0;">Connected to SQLite Database (<code>{DB_PATH}</code>) &amp; Automated Email Notification Engine</p>
             </div>
-            <div>
-                <a href="/" class="btn" style="background:rgba(255,255,255,0.08); color:#fff; margin-right:10px;">&larr; View Website</a>
-                <a href="/api/leads" target="_blank" class="btn" style="background:#facc15; color:#000; margin-right:8px;">Partner JSON</a>
-                <a href="/api/pilot-leads" target="_blank" class="btn" style="background:#38bdf8; color:#000;">Pilot JSON</a>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:13px; color:#cbd5e1; background:rgba(255,255,255,0.06); padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">👤 <strong>info@owngo.in</strong></span>
+                <a href="/" class="btn" style="background:rgba(255,255,255,0.08); color:#fff;">&larr; View Website</a>
+                <button onclick="clearAllLeads()" class="btn" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); cursor:pointer;">🗑️ Clear All Leads</button>
+                <a href="/admin/logout" class="btn" style="background:#ef4444; color:#fff;">Logout 🔒</a>
             </div>
         </div>
 
