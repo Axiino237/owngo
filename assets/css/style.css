@@ -640,43 +640,48 @@ body {
   }
 }
 
-.hero-front-card,
-#hero-tilt-card {
-  display: none !important;
-}
-
 .hero-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 40px;
   align-items: center;
-  text-align: center;
-  max-width: 960px;
-  margin: 0 auto;
 }
 
 .hero-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .hero-cta-group {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .hero-specs-row {
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
 }
 
 @media (max-width: 992px) {
   .hero-grid {
+    grid-template-columns: 1fr;
     gap: 36px;
+    text-align: center;
+  }
+  .hero-content {
+    align-items: center;
+    text-align: center;
+  }
+  .hero-cta-group {
+    justify-content: center;
+  }
+  .hero-specs-row {
+    justify-content: center;
   }
 }
 
@@ -856,18 +861,21 @@ body {
   background: var(--brand-emerald);
 }
 
+.hero-image-stage,
 .hero-gif-stage {
   padding: 0 !important;
   margin: 0 !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent !important;
+  background: radial-gradient(circle at 50% 55%, #0e1e17 0%, #060b0d 100%) !important;
   overflow: hidden;
   border-bottom-left-radius: var(--radius-xl);
   border-bottom-right-radius: var(--radius-xl);
+  position: relative;
 }
 
+.hero-showcase-img,
 .hero-360-gif {
   width: 100% !important;
   max-width: 100% !important;
@@ -876,6 +884,23 @@ body {
   object-fit: cover;
   border-bottom-left-radius: var(--radius-xl);
   border-bottom-right-radius: var(--radius-xl);
+  transition: transform 0.25s ease-out;
+}
+
+.hero-front-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(0, 230, 153, 0.25);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 35px rgba(0, 230, 153, 0.12);
+  position: relative;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+}
+
+.hero-front-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 26px 65px rgba(0, 0, 0, 0.65), 0 0 45px rgba(0, 230, 153, 0.2);
+  border-color: rgba(0, 230, 153, 0.45);
 }
 
 /* ===================================================

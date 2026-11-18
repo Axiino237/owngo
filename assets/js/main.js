@@ -380,7 +380,7 @@ function initNavbar() {
    =================================================== */
 function initHeroTiltAndAngles() {
   const tiltCard = document.getElementById('hero-tilt-card');
-  const heroGif = document.getElementById('hero-rotating-gif') || document.getElementById('hero-displayed-auto');
+  const heroGif = document.getElementById('hero-showcase-img') || document.getElementById('hero-rotating-gif') || document.getElementById('hero-displayed-auto');
 
   if (!tiltCard || !heroGif) return;
 
