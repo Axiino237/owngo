@@ -640,16 +640,42 @@ body {
   }
 }
 
+.hero-front-card,
+#hero-tilt-card {
+  display: none !important;
+}
+
 .hero-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 48px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hero-cta-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero-specs-row {
+  justify-content: center;
+  width: 100%;
 }
 
 @media (max-width: 992px) {
   .hero-grid {
-    grid-template-columns: 1fr;
     gap: 36px;
   }
 }
