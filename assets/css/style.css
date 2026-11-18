@@ -3469,3 +3469,30 @@ body:not(.dark-theme) .calc-est-wealth-desc {
   line-height: 1.45;
   color: var(--text-secondary);
 }
+
+.economics-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 32px;
+  align-items: stretch;
+}
+
+.economics-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.econ-escrow-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.econ-perks-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
