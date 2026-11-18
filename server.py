@@ -628,7 +628,7 @@ async def admin_portal():
             <div class="stat-box" style="border-color: rgba(250,204,21,0.25);">
                 <div class="stat-lbl">EV Pilot Applicants</div>
                 <div class="stat-val" style="color:#facc15;">{len(pilots)}</div>
-                <div style="font-size:12px; color:#94a3b8;">₹30,000/Mo Salary Pilots</div>
+                <div style="font-size:12px; color:#94a3b8;">₹25,000/Mo Salary Pilots</div>
             </div>
             <div class="stat-box" style="border-color: rgba(6,182,212,0.25);">
                 <div class="stat-lbl">Unique Device Views</div>
@@ -670,7 +670,7 @@ async def admin_portal():
         <!-- Section 2: EV Pilot Applications -->
         <div class="card" style="border-color: rgba(250,204,21,0.2);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#facc15;">🛺 Registered EV Pilot Applications (₹30,000/Mo Salary)</h2>
+                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#facc15;">🛺 Registered EV Pilot Applications (₹25,000/Mo Salary)</h2>
                 <span style="font-size:13px; color:#94a3b8;">Total: {len(pilots)}</span>
             </div>
             <table>

@@ -556,7 +556,7 @@ function initInvestorCalculator() {
   const INVESTOR_DOWNPAY = 100000;  // ₹1.0 Lakh investor investment
   const MONTHLY_RETURN = 10000;     // ₹10,000 fixed passive return per auto
   const CAPITAL_REFUND = 40000;     // ₹40,000 refund after 6 months
-  const EST_EMI = 12650;            // Monthly EMI paid directly by OWNGO
+  const EST_EMI = 15000;            // Monthly EMI paid directly by OWNGO
 
   function calculate() {
     const count = parseInt(autosSlider.value, 10) || 1;
@@ -826,8 +826,8 @@ function initPilotBookingForm() {
         const leadId = result.pilot_id || 'CONFIRMED';
         const isTamil = document.documentElement.lang === 'ta';
         toast.innerHTML = isTamil 
-          ? `<i class="lucide-check-circle"></i> <strong>விண்ணப்ப எண் #${leadId} பதிவானது!</strong> நன்றி ${name}! உங்கள் ₹30,000 மாத சம்பள EV பைலட் விண்ணப்பம் ஏற்கப்பட்டது. விரைவில் எங்கள் மேலாளர் தொடர்புகொள்வார்.`
-          : `<i class="lucide-check-circle"></i> <strong>Pilot Application #${leadId} Received!</strong> Thank you ${name}! Fixed ₹30,000/mo salary application recorded. Our recruitment team will call you within 2 hours.`;
+          ? `<i class="lucide-check-circle"></i> <strong>விண்ணப்ப எண் #${leadId} பதிவானது!</strong> நன்றி ${name}! உங்கள் ₹25,000 மாத சம்பள EV பைலட் விண்ணப்பம் ஏற்கப்பட்டது. விரைவில் எங்கள் மேலாளர் தொடர்புகொள்வார்.`
+          : `<i class="lucide-check-circle"></i> <strong>Pilot Application #${leadId} Received!</strong> Thank you ${name}! Fixed ₹25,000/mo salary application recorded. Our recruitment team will call you within 2 hours.`;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 6000);
       }
