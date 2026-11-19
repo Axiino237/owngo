@@ -769,6 +769,14 @@ function initPartnerNavCta() {
       }
     });
   }
+
+  // Handle direct URL hash jump on page load (e.g. https://owngo.in/#apply)
+  if (window.location.hash === '#apply') {
+    setTimeout(() => {
+      const applySec = document.getElementById('apply');
+      if (applySec) applySec.scrollIntoView({ behavior: 'smooth' });
+    }, 450);
+  }
 }
 
 function initPilotBookingForm() {
