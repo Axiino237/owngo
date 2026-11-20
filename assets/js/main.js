@@ -4,6 +4,9 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Capture lead source from URL (?ref=, ?source=, ?utm_source=, etc.) or referrer
+  initLeadSourceTracker();
+
   // Initialize Lucide Icons Package
   if (window.lucide && typeof lucide.createIcons === 'function') {
     lucide.createIcons();
@@ -25,6 +28,56 @@ document.addEventListener('DOMContentLoaded', () => {
   initLanguageToggle();
   initScrollAnimations();
 });
+
+/* ===================================================
+   LEAD SOURCE & ATTRIBUTION TRACKER
+   Captures ?ref=, ?source=, ?utm_source=, ?channel=
+   and document.referrer (Instagram, YouTube, WhatsApp, etc.)
+   =================================================== */
+function initLeadSourceTracker() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sourceParam = urlParams.get('ref') || urlParams.get('source') || urlParams.get('utm_source') || urlParams.get('src') || urlParams.get('channel');
+    
+    if (sourceParam && sourceParam.trim()) {
+      const cleanSource = sourceParam.trim();
+      sessionStorage.setItem('owngo_lead_source', cleanSource);
+      localStorage.setItem('owngo_lead_source', cleanSource);
+      return;
+    }
+
+    // Fallback: check referrer if not already stored
+    if (!sessionStorage.getItem('owngo_lead_source') && !localStorage.getItem('owngo_lead_source')) {
+      const referrer = (document.referrer || '').toLowerCase();
+      let detected = 'Direct Website';
+      if (referrer.includes('instagram.com')) {
+        detected = 'Instagram';
+      } else if (referrer.includes('youtube.com') || referrer.includes('youtu.be')) {
+        detected = 'YouTube';
+      } else if (referrer.includes('whatsapp') || referrer.includes('wa.me')) {
+        detected = 'WhatsApp';
+      } else if (referrer.includes('facebook.com') || referrer.includes('fb.com')) {
+        detected = 'Facebook';
+      } else if (referrer.includes('linkedin.com')) {
+        detected = 'LinkedIn';
+      } else if (referrer.includes('google.com')) {
+        detected = 'Google Search';
+      }
+      sessionStorage.setItem('owngo_lead_source', detected);
+      localStorage.setItem('owngo_lead_source', detected);
+    }
+  } catch (err) {
+    console.warn('Attribution tracker error:', err);
+  }
+}
+
+function getLeadSource() {
+  try {
+    return sessionStorage.getItem('owngo_lead_source') || localStorage.getItem('owngo_lead_source') || 'Direct Website';
+  } catch (e) {
+    return 'Direct Website';
+  }
+}
 
 /* ===================================================
    HARDWARE & CANVAS FINGERPRINT (Immutable across cache clears)
@@ -656,7 +709,8 @@ function initBookingForm() {
           phone: phone,
           autos: parseInt(autosCount, 10),
           city: city,
-          cibil: cibil
+          cibil: cibil,
+          source: getLeadSource()
         })
       });
 
@@ -815,7 +869,8 @@ function initPilotBookingForm() {
           phone: phone,
           license_type: licenseType,
           preferred_area: preferredArea,
-          experience: experience
+          experience: experience,
+          source: getLeadSource()
         })
       });
 

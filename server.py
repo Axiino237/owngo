@@ -15,7 +15,7 @@ import smtplib
 import hashlib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException
@@ -297,6 +297,7 @@ def init_db():
         autos_count INTEGER DEFAULT 1,
         city TEXT NOT NULL,
         cibil_score TEXT,
+        source TEXT DEFAULT 'Direct Website',
         email_status TEXT DEFAULT 'PENDING',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -324,11 +325,23 @@ def init_db():
         license_type TEXT,
         preferred_area TEXT,
         experience TEXT,
+        source TEXT DEFAULT 'Direct Website',
         status TEXT DEFAULT 'NEW',
         email_status TEXT DEFAULT 'PENDING',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # Safe schema migration for 'source' column
+    cursor.execute("PRAGMA table_info(leads)")
+    lead_cols = [c[1] for c in cursor.fetchall()]
+    if "source" not in lead_cols:
+        cursor.execute("ALTER TABLE leads ADD COLUMN source TEXT DEFAULT 'Direct Website'")
+
+    cursor.execute("PRAGMA table_info(pilot_leads)")
+    pilot_cols = [c[1] for c in cursor.fetchall()]
+    if "source" not in pilot_cols:
+        cursor.execute("ALTER TABLE pilot_leads ADD COLUMN source TEXT DEFAULT 'Direct Website'")
 
     conn.commit()
     conn.close()
@@ -336,10 +349,48 @@ def init_db():
 init_db()
 
 # ===================================================
+# TIMEZONE & ATTRIBUTION HELPERS
+# ===================================================
+def format_ist_datetime(dt_str: Optional[str]) -> str:
+    """Converts SQLite UTC timestamp to Indian Standard Time (IST, UTC+5:30) with 12-hour AM/PM format"""
+    if not dt_str:
+        return "-"
+    try:
+        raw = str(dt_str).strip()
+        if "IST" in raw or "AM" in raw or "PM" in raw:
+            return raw
+        cleaned = raw.split(".")[0].replace("T", " ")
+        dt = datetime.strptime(cleaned, "%Y-%m-%d %H:%M:%S")
+        ist_dt = dt + timedelta(hours=5, minutes=30)
+        return ist_dt.strftime("%d %b %Y, %I:%M %p")
+    except Exception:
+        return str(dt_str)
+
+def format_source_badge(source: Optional[str]) -> str:
+    """Renders high-visibility styled badge based on marketing channel / referral source"""
+    s = (source or "Direct Website").strip()
+    s_lower = s.lower()
+    
+    if "insta" in s_lower:
+        return f'<span style="background:rgba(244,63,94,0.18); color:#f43f5e; border:1px solid rgba(244,63,94,0.35); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">📸 {s}</span>'
+    elif "you" in s_lower or "yt" in s_lower:
+        return f'<span style="background:rgba(239,68,68,0.18); color:#ef4444; border:1px solid rgba(239,68,68,0.35); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">▶️ {s}</span>'
+    elif "what" in s_lower or "wa" in s_lower:
+        return f'<span style="background:rgba(34,197,94,0.18); color:#22c55e; border:1px solid rgba(34,197,94,0.35); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">💬 {s}</span>'
+    elif "sale" in s_lower or "team" in s_lower:
+        return f'<span style="background:rgba(168,85,247,0.18); color:#c084fc; border:1px solid rgba(168,85,247,0.35); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">💼 {s}</span>'
+    elif "facebook" in s_lower or "fb" in s_lower:
+        return f'<span style="background:rgba(59,130,246,0.18); color:#60a5fa; border:1px solid rgba(59,130,246,0.35); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">📘 {s}</span>'
+    elif "direct" in s_lower:
+        return f'<span style="background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:5px;">🌐 {s}</span>'
+    else:
+        return f'<span style="background:rgba(250,204,21,0.15); color:#facc15; border:1px solid rgba(250,204,21,0.3); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">🔗 {s}</span>'
+
+# ===================================================
 # EMAIL SENDER FUNCTION
 # ===================================================
-def send_email_notification(lead_id: int, name: str, phone: str, autos: int, city: str, cibil: str) -> bool:
-    subject = f"⚡ NEW INVESTOR APPLICATION: {name} - {autos} EV Auto(s) ({city})"
+def send_email_notification(lead_id: int, name: str, phone: str, autos: int, city: str, cibil: str, source: str = "Direct Website") -> bool:
+    subject = f"⚡ NEW INVESTOR APPLICATION: {name} - {autos} EV Auto(s) ({city}) [{source}]"
     
     body = f"""
 =====================================================
@@ -351,8 +402,8 @@ Phone Number  : {phone}
 Autos Desired : {autos} Auto(s) (Investment: Rs. {autos * 100000:,})
 Expected ROI  : Rs. {autos * 10000:,} / Month (Guaranteed Passive Income)
 Target City   : {city}
-CIBIL Range   : {cibil}
-Date / Time   : {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}
+Lead Source   : {source}
+Date / Time   : {datetime.now().strftime('%d %b %Y, %I:%M %p IST')}
 =====================================================
 Fleet Operations: Running in bulk for OLA Mobility
 Asset Security: 100% Registered in Investor Name
@@ -396,8 +447,8 @@ Asset Security: 100% Registered in Investor Name
 
     return True
 
-def send_pilot_email_notification(pilot_id: int, name: str, phone: str, license_type: str, preferred_area: str, experience: str) -> bool:
-    subject = f"🛺 NEW EV PILOT APPLICATION: {name} - {license_type} ({preferred_area})"
+def send_pilot_email_notification(pilot_id: int, name: str, phone: str, license_type: str, preferred_area: str, experience: str, source: str = "Direct Website") -> bool:
+    subject = f"🛺 NEW EV PILOT APPLICATION: {name} - {license_type} ({preferred_area}) [{source}]"
     
     body = f"""
 =====================================================
@@ -409,8 +460,9 @@ Phone Number    : {phone}
 License Type    : {license_type}
 Preferred Hub   : {preferred_area}
 Driving Exp     : {experience}
+Lead Source     : {source}
 Guaranteed Pay  : Rs. 30,000 / Month Fixed Salary + Incentives
-Date / Time     : {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}
+Date / Time     : {datetime.now().strftime('%d %b %Y, %I:%M %p IST')}
 =====================================================
 Fleet Vehicles  : Bajaj GoGo P7012 EV Auto (Ola, Uber & Rapido)
 Safety ADAS     : Cautio Dual-Lens AI Dashcam & SOS Alert
@@ -461,6 +513,7 @@ class RegisterLeadRequest(BaseModel):
     autos: int = 1
     city: str
     cibil: Optional[str] = "Good (700 - 749)"
+    source: Optional[str] = "Direct Website"
 
 class RegisterPilotRequest(BaseModel):
     name: str
@@ -468,6 +521,7 @@ class RegisterPilotRequest(BaseModel):
     license_type: Optional[str] = "Commercial Auto Driver Badge"
     preferred_area: Optional[str] = "Central Chennai"
     experience: Optional[str] = "2 to 5 Years"
+    source: Optional[str] = "Direct Website"
 
 # ===================================================
 # REST API ENDPOINTS
@@ -604,15 +658,16 @@ async def register_investor(lead: RegisterLeadRequest):
     if not lead.name or not lead.phone:
         raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
 
+    lead_source = (lead.source or "Direct Website").strip()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        INSERT INTO leads (name, phone, autos_count, city, cibil_score)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO leads (name, phone, autos_count, city, cibil_score, source)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (lead.name.strip(), lead.phone.strip(), lead.autos, lead.city.strip(), lead.cibil)
+        (lead.name.strip(), lead.phone.strip(), lead.autos, lead.city.strip(), lead.cibil, lead_source)
     )
     lead_id = cursor.lastrowid
     conn.commit()
@@ -625,12 +680,14 @@ async def register_investor(lead: RegisterLeadRequest):
         phone=lead.phone,
         autos=lead.autos,
         city=lead.city,
-        cibil=lead.cibil
+        cibil=lead.cibil,
+        source=lead_source
     )
 
     return {
         "success": True,
         "lead_id": lead_id,
+        "source": lead_source,
         "message": f"Application #{lead_id} successfully registered in database and notification sent!"
     }
 
@@ -640,15 +697,16 @@ async def register_pilot(pilot: RegisterPilotRequest):
     if not pilot.name or not pilot.phone:
         raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
 
+    pilot_source = (pilot.source or "Direct Website").strip()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        INSERT INTO pilot_leads (name, phone, license_type, preferred_area, experience)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO pilot_leads (name, phone, license_type, preferred_area, experience, source)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (pilot.name.strip(), pilot.phone.strip(), pilot.license_type, pilot.preferred_area, pilot.experience)
+        (pilot.name.strip(), pilot.phone.strip(), pilot.license_type, pilot.preferred_area, pilot.experience, pilot_source)
     )
     pilot_id = cursor.lastrowid
     conn.commit()
@@ -660,12 +718,14 @@ async def register_pilot(pilot: RegisterPilotRequest):
         phone=pilot.phone,
         license_type=pilot.license_type,
         preferred_area=pilot.preferred_area,
-        experience=pilot.experience
+        experience=pilot.experience,
+        source=pilot_source
     )
 
     return {
         "success": True,
         "pilot_id": pilot_id,
+        "source": pilot_source,
         "message": f"Pilot Application #{pilot_id} successfully registered in database and notification sent!"
     }
 
@@ -676,7 +736,7 @@ async def list_pilot_leads(request: Request):
     """Returns all registered pilot applications from database"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, phone, license_type, preferred_area, experience, status, created_at FROM pilot_leads ORDER BY id DESC")
+    cursor.execute("SELECT id, name, phone, license_type, preferred_area, experience, source, status, created_at FROM pilot_leads ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
 
@@ -688,8 +748,9 @@ async def list_pilot_leads(request: Request):
             "license_type": r[3],
             "preferred_area": r[4],
             "experience": r[5],
-            "status": r[6],
-            "created_at": r[7]
+            "source": r[6] or "Direct Website",
+            "status": r[7],
+            "created_at": format_ist_datetime(r[8])
         }
         for r in rows
     ]
@@ -702,7 +763,7 @@ async def list_leads(request: Request):
     """Returns all registered leads from database"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, phone, autos_count, city, cibil_score, email_status, created_at FROM leads ORDER BY id DESC")
+    cursor.execute("SELECT id, name, phone, autos_count, city, source, email_status, created_at FROM leads ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
 
@@ -713,9 +774,9 @@ async def list_leads(request: Request):
             "phone": r[2],
             "autos": r[3],
             "city": r[4],
-            "cibil": r[5],
+            "source": r[5] or "Direct Website",
             "email_status": r[6],
-            "created_at": r[7]
+            "created_at": format_ist_datetime(r[7])
         }
         for r in rows
     ]
@@ -798,10 +859,10 @@ async def admin_portal(request: Request):
     cur = conn.cursor()
     cur.execute("SELECT COUNT(DISTINCT device_id) FROM visitors WHERE device_id IS NOT NULL AND device_id != ''")
     unique_devices = cur.fetchone()[0]
-    cur.execute("SELECT id, name, phone, autos_count, city, cibil_score, email_status, created_at FROM leads ORDER BY id DESC")
+    cur.execute("SELECT id, name, phone, autos_count, city, source, email_status, created_at FROM leads ORDER BY id DESC")
     leads = cur.fetchall()
 
-    cur.execute("SELECT id, name, phone, license_type, preferred_area, experience, status, created_at FROM pilot_leads ORDER BY id DESC")
+    cur.execute("SELECT id, name, phone, license_type, preferred_area, experience, source, status, created_at FROM pilot_leads ORDER BY id DESC")
     pilots = cur.fetchall()
     conn.close()
 
@@ -810,12 +871,12 @@ async def admin_portal(request: Request):
         <tr>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; font-weight:bold; color:#10b981;'>#{r[0]}</td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#fff; font-weight:600;'>{r[1]}</td>
-            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#94a3b8;'>{r[2]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#94a3b8;'><a href='tel:{r[2]}' style='color:#38bdf8; text-decoration:none;'>{r[2]}</a></td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#facc15; font-weight:bold;'>{r[3]} Auto(s) (₹{r[3]}L)</td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#cbd5e1;'>{r[4]}</td>
-            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#94a3b8;'>{r[5]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140;'>{format_source_badge(r[5])}</td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140;'><span style='background:rgba(34,197,94,0.15); color:#22c55e; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:bold;'>{r[6]}</span></td>
-            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#64748b; font-size:13px;'>{r[7]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#38bdf8; font-size:13px; font-weight:600;'>{format_ist_datetime(r[7])}</td>
         </tr>
         """
         for r in leads
@@ -826,16 +887,17 @@ async def admin_portal(request: Request):
         <tr>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; font-weight:bold; color:#facc15;'>#{r[0]}</td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#fff; font-weight:600;'>{r[1]}</td>
-            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#94a3b8;'>{r[2]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#94a3b8;'><a href='tel:{r[2]}' style='color:#38bdf8; text-decoration:none;'>{r[2]}</a></td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#38bdf8; font-weight:600;'>{r[3]}</td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#cbd5e1;'>{r[4]}</td>
             <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#a78bfa;'>{r[5]}</td>
-            <td style='padding:12px 16px; border-bottom:1px solid #233140;'><span style='background:rgba(250,204,21,0.15); color:#facc15; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:bold;'>{r[6]}</span></td>
-            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#64748b; font-size:13px;'>{r[7]}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140;'>{format_source_badge(r[6])}</td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140;'><span style='background:rgba(250,204,21,0.15); color:#facc15; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:bold;'>{r[7]}</span></td>
+            <td style='padding:12px 16px; border-bottom:1px solid #233140; color:#38bdf8; font-size:13px; font-weight:600;'>{format_ist_datetime(r[8])}</td>
         </tr>
         """
         for r in pilots
-    ]) or "<tr><td colspan='8' style='padding:24px; text-align:center; color:#64748b;'>No EV Pilot applications received yet.</td></tr>"
+    ]) or "<tr><td colspan='9' style='padding:24px; text-align:center; color:#64748b;'>No EV Pilot applications received yet.</td></tr>"
 
     return f"""
     <!DOCTYPE html>
@@ -893,6 +955,46 @@ async def admin_portal(request: Request):
             </div>
         </div>
 
+        <!-- Section: Referral Link Generator -->
+        <div class="card" style="border-color: rgba(56, 189, 248, 0.25); background: #0c1622;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h3 style="font-family:'Outfit'; font-size:17px; margin:0; color:#38bdf8;">🔗 Quick Marketing &amp; Sales Referral Links</h3>
+                    <p style="color:#94a3b8; font-size:12px; margin:3px 0 0;">Share these links across channels. When a user applies, the exact source appears automatically in the table below!</p>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:12px; color:#f43f5e; font-weight:700;">📸 Instagram Bio / Story</div>
+                        <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=instagram#apply</code>
+                    </div>
+                    <button onclick="copyToClipboard('https://owngo.in/?ref=instagram#apply', this)" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
+                </div>
+                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:12px; color:#ef4444; font-weight:700;">▶️ YouTube Description / Video</div>
+                        <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=youtube#apply</code>
+                    </div>
+                    <button onclick="copyToClipboard('https://owngo.in/?ref=youtube#apply', this)" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
+                </div>
+                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:12px; color:#22c55e; font-weight:700;">💬 WhatsApp Broadcast / Status</div>
+                        <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=whatsapp#apply</code>
+                    </div>
+                    <button onclick="copyToClipboard('https://owngo.in/?ref=whatsapp#apply', this)" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
+                </div>
+                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; gap:8px; align-items:center;">
+                    <div style="flex:1;">
+                        <div style="font-size:12px; color:#c084fc; font-weight:700;">💼 Custom Sales Person Link</div>
+                        <input id="customSalesTag" placeholder="e.g. rahul or dinesh" style="background:#070a0e; border:1px solid #233140; color:#fff; padding:4px 8px; border-radius:6px; font-size:11px; width:90%; margin-top:2px;" />
+                    </div>
+                    <button onclick="copySalesLink(this)" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700; white-space:nowrap;">Copy Link</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Section 1: Partner Leads -->
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -907,9 +1009,9 @@ async def admin_portal(request: Request):
                         <th>Phone / WhatsApp</th>
                         <th>Autos Count</th>
                         <th>Target City</th>
-                        <th>CIBIL Range</th>
+                        <th>Lead Source / Channel</th>
                         <th>Notification</th>
-                        <th>Date &amp; Time</th>
+                        <th>Date &amp; Time (IST)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -933,8 +1035,9 @@ async def admin_portal(request: Request):
                         <th>License Type</th>
                         <th>Preferred Operating Hub</th>
                         <th>Experience</th>
+                        <th>Lead Source / Channel</th>
                         <th>Status</th>
-                        <th>Date &amp; Time</th>
+                        <th>Date &amp; Time (IST)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -942,6 +1045,39 @@ async def admin_portal(request: Request):
                 </tbody>
             </table>
         </div>
+
+        <script>
+        function copyToClipboard(text, btn) {{
+            navigator.clipboard.writeText(text).then(() => {{
+                const orig = btn.innerText;
+                btn.innerText = 'Copied! ✓';
+                setTimeout(() => btn.innerText = orig, 2000);
+            }}).catch(() => {{
+                prompt('Copy this link:', text);
+            }});
+        }}
+        function copySalesLink(btn) {{
+            const tagInput = document.getElementById('customSalesTag');
+            const tag = (tagInput && tagInput.value.trim() ? tagInput.value.trim() : 'sales-team').replace(/\\s+/g, '-').toLowerCase();
+            const url = `https://owngo.in/?ref=sales-${{tag}}#apply`;
+            copyToClipboard(url, btn);
+        }}
+        async function clearAllLeads() {{
+            if (!confirm('⚠️ Are you sure you want to permanently clear all leads and pilot applications? This cannot be undone.')) return;
+            try {{
+                const res = await fetch('/api/admin/clear-leads', {{ method: 'POST' }});
+                const data = await res.json();
+                if (data.success) {{
+                    alert('All leads removed successfully.');
+                    window.location.reload();
+                }} else {{
+                    alert('Error: ' + (data.message || 'Failed to clear'));
+                }}
+            }} catch (e) {{
+                alert('Request failed: ' + e);
+            }}
+        }}
+        </script>
     </body>
     </html>
     """
