@@ -996,7 +996,6 @@ async def admin_portal(request: Request):
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <span style="font-size:13px; color:#cbd5e1; background:rgba(255,255,255,0.06); padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">👤 <strong>info@owngo.in</strong></span>
                 <a href="/" class="btn" style="background:rgba(255,255,255,0.08); color:#fff;">&larr; View Website</a>
-                <button onclick="clearAllLeads()" class="btn" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); cursor:pointer;">🗑️ Clear All Leads</button>
                 <a href="/admin/logout" class="btn" style="background:#ef4444; color:#fff;">Logout 🔒</a>
             </div>
         </div>
