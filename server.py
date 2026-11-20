@@ -16,6 +16,7 @@ import hashlib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
+from urllib.parse import urlparse, parse_qs
 from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException
@@ -386,6 +387,74 @@ def format_source_badge(source: Optional[str]) -> str:
     else:
         return f'<span style="background:rgba(250,204,21,0.15); color:#facc15; border:1px solid rgba(250,204,21,0.3); padding:4px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">🔗 {s}</span>'
 
+def extract_source_from_request(request: Request, body_source: Optional[str] = None) -> str:
+    """
+    Bulletproof multi-layered lead attribution:
+    1. If explicit non-default source passed in JSON payload, use it.
+    2. Check persistent cookie 'owngo_lead_source'.
+    3. Check HTTP Referer header sent by browser (contains full URL e.g. https://owngo.in/?ref=instagram#apply).
+    4. Fallback to 'Direct Website'.
+    """
+    if body_source and body_source.strip() and body_source.strip().lower() not in ["direct website", "direct", "unknown"]:
+        return body_source.strip()
+
+    # Check cookie
+    cookie_source = request.cookies.get("owngo_lead_source")
+    if cookie_source and cookie_source.strip() and cookie_source.strip().lower() not in ["direct website", "direct"]:
+        return cookie_source.strip()
+
+    # Check Referer header
+    referer = request.headers.get("referer") or ""
+    if referer:
+        try:
+            parsed = urlparse(referer)
+            qs = parse_qs(parsed.query)
+            for param in ["ref", "source", "utm_source", "src", "channel"]:
+                if param in qs and qs[param][0].strip():
+                    val = qs[param][0].strip()
+                    val_lower = val.lower()
+                    if val_lower in ["instagram", "insta", "ig"]:
+                        return "Instagram"
+                    if val_lower in ["youtube", "yt"]:
+                        return "YouTube"
+                    if val_lower in ["whatsapp", "wa"]:
+                        return "WhatsApp"
+                    if val_lower in ["facebook", "fb"]:
+                        return "Facebook"
+                    return val
+
+            # Check fragment / hash query string: e.g. #apply?ref=instagram
+            if parsed.fragment and "?" in parsed.fragment:
+                hash_qs = parse_qs(parsed.fragment.split("?")[1])
+                for param in ["ref", "source", "utm_source", "src", "channel"]:
+                    if param in hash_qs and hash_qs[param][0].strip():
+                        val = hash_qs[param][0].strip()
+                        val_lower = val.lower()
+                        if val_lower in ["instagram", "insta", "ig"]:
+                            return "Instagram"
+                        if val_lower in ["youtube", "yt"]:
+                            return "YouTube"
+                        if val_lower in ["whatsapp", "wa"]:
+                            return "WhatsApp"
+                        if val_lower in ["facebook", "fb"]:
+                            return "Facebook"
+                        return val
+
+            # Check referrer domain
+            ref_lower = referer.lower()
+            if "instagram.com" in ref_lower or "l.instagram.com" in ref_lower:
+                return "Instagram"
+            if "youtube.com" in ref_lower or "youtu.be" in ref_lower:
+                return "YouTube"
+            if "whatsapp" in ref_lower or "wa.me" in ref_lower:
+                return "WhatsApp"
+            if "facebook.com" in ref_lower or "fb.com" in ref_lower:
+                return "Facebook"
+        except Exception as e:
+            print(f"[Referer Attribution Warning]: {e}")
+
+    return (body_source or "Direct Website").strip()
+
 # ===================================================
 # EMAIL SENDER FUNCTION
 # ===================================================
@@ -653,12 +722,12 @@ async def get_and_track_visitor(
     return response
 
 @app.post("/api/register")
-async def register_investor(lead: RegisterLeadRequest):
+async def register_investor(lead: RegisterLeadRequest, request: Request):
     """Registers an investor lead into SQLite and triggers email notification"""
     if not lead.name or not lead.phone:
         raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
 
-    lead_source = (lead.source or "Direct Website").strip()
+    lead_source = extract_source_from_request(request, lead.source)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -692,12 +761,12 @@ async def register_investor(lead: RegisterLeadRequest):
     }
 
 @app.post("/api/register-pilot")
-async def register_pilot(pilot: RegisterPilotRequest):
+async def register_pilot(pilot: RegisterPilotRequest, request: Request):
     """Registers an EV Pilot application into SQLite and triggers email notification"""
     if not pilot.name or not pilot.phone:
         raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
 
-    pilot_source = (pilot.source or "Direct Website").strip()
+    pilot_source = extract_source_from_request(request, pilot.source)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 

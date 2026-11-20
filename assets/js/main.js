@@ -36,46 +36,156 @@ document.addEventListener('DOMContentLoaded', () => {
    =================================================== */
 function initLeadSourceTracker() {
   try {
+    let sourceParam = null;
+
+    // 1. Check standard URL search query
     const urlParams = new URLSearchParams(window.location.search);
-    const sourceParam = urlParams.get('ref') || urlParams.get('source') || urlParams.get('utm_source') || urlParams.get('src') || urlParams.get('channel');
-    
-    if (sourceParam && sourceParam.trim()) {
-      const cleanSource = sourceParam.trim();
-      sessionStorage.setItem('owngo_lead_source', cleanSource);
-      localStorage.setItem('owngo_lead_source', cleanSource);
-      return;
+    sourceParam = urlParams.get('ref') || urlParams.get('source') || urlParams.get('utm_source') || urlParams.get('src') || urlParams.get('channel');
+
+    // 2. Check if query is inside hash (e.g. #apply?ref=instagram)
+    if (!sourceParam && window.location.hash && window.location.hash.includes('?')) {
+      const hashQuery = window.location.hash.split('?')[1];
+      if (hashQuery) {
+        const hp = new URLSearchParams(hashQuery);
+        sourceParam = hp.get('ref') || hp.get('source') || hp.get('utm_source') || hp.get('src') || hp.get('channel');
+      }
     }
 
-    // Fallback: check referrer if not already stored
-    if (!sessionStorage.getItem('owngo_lead_source') && !localStorage.getItem('owngo_lead_source')) {
-      const referrer = (document.referrer || '').toLowerCase();
-      let detected = 'Direct Website';
-      if (referrer.includes('instagram.com')) {
-        detected = 'Instagram';
-      } else if (referrer.includes('youtube.com') || referrer.includes('youtu.be')) {
-        detected = 'YouTube';
-      } else if (referrer.includes('whatsapp') || referrer.includes('wa.me')) {
-        detected = 'WhatsApp';
-      } else if (referrer.includes('facebook.com') || referrer.includes('fb.com')) {
-        detected = 'Facebook';
-      } else if (referrer.includes('linkedin.com')) {
-        detected = 'LinkedIn';
-      } else if (referrer.includes('google.com')) {
-        detected = 'Google Search';
+    // 3. If explicit source in URL, store it and overwrite any prior value
+    if (sourceParam && sourceParam.trim()) {
+      let cleanSource = sourceParam.trim();
+      const lower = cleanSource.toLowerCase();
+      if (lower === 'instagram' || lower === 'insta' || lower === 'ig') cleanSource = 'Instagram';
+      else if (lower === 'youtube' || lower === 'yt') cleanSource = 'YouTube';
+      else if (lower === 'whatsapp' || lower === 'wa') cleanSource = 'WhatsApp';
+      else if (lower === 'facebook' || lower === 'fb') cleanSource = 'Facebook';
+
+      sessionStorage.setItem('owngo_lead_source', cleanSource);
+      localStorage.setItem('owngo_lead_source', cleanSource);
+      document.cookie = `owngo_lead_source=${encodeURIComponent(cleanSource)}; path=/; max-age=2592000; SameSite=Lax`;
+    } else {
+      // 4. Check if already stored in cookie or storage
+      const storedCookie = getCookie('owngo_lead_source');
+      if (storedCookie && storedCookie !== 'Direct Website') {
+        sessionStorage.setItem('owngo_lead_source', storedCookie);
+        localStorage.setItem('owngo_lead_source', storedCookie);
+      } else if (!sessionStorage.getItem('owngo_lead_source') && !localStorage.getItem('owngo_lead_source')) {
+        // Fallback: check referrer
+        const referrer = (document.referrer || '').toLowerCase();
+        let detected = 'Direct Website';
+        if (referrer.includes('instagram.com') || referrer.includes('l.instagram.com')) {
+          detected = 'Instagram';
+        } else if (referrer.includes('youtube.com') || referrer.includes('youtu.be')) {
+          detected = 'YouTube';
+        } else if (referrer.includes('whatsapp') || referrer.includes('wa.me')) {
+          detected = 'WhatsApp';
+        } else if (referrer.includes('facebook.com') || referrer.includes('fb.com')) {
+          detected = 'Facebook';
+        } else if (referrer.includes('linkedin.com')) {
+          detected = 'LinkedIn';
+        } else if (referrer.includes('google.com')) {
+          detected = 'Google Search';
+        }
+        sessionStorage.setItem('owngo_lead_source', detected);
+        localStorage.setItem('owngo_lead_source', detected);
+        document.cookie = `owngo_lead_source=${encodeURIComponent(detected)}; path=/; max-age=2592000; SameSite=Lax`;
       }
-      sessionStorage.setItem('owngo_lead_source', detected);
-      localStorage.setItem('owngo_lead_source', detected);
     }
+
+    // Update hidden inputs and visual source badge on forms
+    updateSourceInputsAndBadges();
   } catch (err) {
     console.warn('Attribution tracker error:', err);
   }
 }
 
+function getCookie(name) {
+  try {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  } catch (e) {}
+  return null;
+}
+
 function getLeadSource() {
   try {
-    return sessionStorage.getItem('owngo_lead_source') || localStorage.getItem('owngo_lead_source') || 'Direct Website';
-  } catch (e) {
-    return 'Direct Website';
+    // 1. Direct URL query param check (highest precedence)
+    const urlParams = new URLSearchParams(window.location.search);
+    const p = urlParams.get('ref') || urlParams.get('source') || urlParams.get('utm_source') || urlParams.get('src') || urlParams.get('channel');
+    if (p && p.trim()) {
+      const lower = p.trim().toLowerCase();
+      if (lower === 'instagram' || lower === 'insta' || lower === 'ig') return 'Instagram';
+      if (lower === 'youtube' || lower === 'yt') return 'YouTube';
+      if (lower === 'whatsapp' || lower === 'wa') return 'WhatsApp';
+      if (lower === 'facebook' || lower === 'fb') return 'Facebook';
+      return p.trim();
+    }
+
+    // 2. Hidden input check
+    const hiddenInv = document.getElementById('investor-source-hidden');
+    if (hiddenInv && hiddenInv.value && hiddenInv.value !== 'Direct Website') {
+      return hiddenInv.value;
+    }
+
+    // 3. Storage / Cookie
+    const stored = sessionStorage.getItem('owngo_lead_source') || localStorage.getItem('owngo_lead_source') || getCookie('owngo_lead_source');
+    if (stored && stored.trim() && stored !== 'Direct Website') {
+      return stored.trim();
+    }
+  } catch (e) {}
+  return 'Direct Website';
+}
+
+function updateSourceInputsAndBadges() {
+  const src = getLeadSource();
+  const invHidden = document.getElementById('investor-source-hidden');
+  const pilotHidden = document.getElementById('pilot-source-hidden');
+  if (invHidden) invHidden.value = src;
+  if (pilotHidden) pilotHidden.value = src;
+
+  const invBadge = document.getElementById('investor-source-badge');
+  const pilotBadge = document.getElementById('pilot-source-badge');
+
+  if (src && src !== 'Direct Website') {
+    let icon = '🔗';
+    let bg = 'rgba(56, 189, 248, 0.15)';
+    let color = '#38bdf8';
+    let border = '1px solid rgba(56, 189, 248, 0.35)';
+
+    const sLower = src.toLowerCase();
+    if (sLower.includes('insta')) {
+      icon = '📸';
+      bg = 'rgba(244, 63, 94, 0.15)';
+      color = '#f43f5e';
+      border = '1px solid rgba(244, 63, 94, 0.35)';
+    } else if (sLower.includes('you') || sLower.includes('yt')) {
+      icon = '▶️';
+      bg = 'rgba(239, 68, 68, 0.15)';
+      color = '#ef4444';
+      border = '1px solid rgba(239, 68, 68, 0.35)';
+    } else if (sLower.includes('what') || sLower.includes('wa')) {
+      icon = '💬';
+      bg = 'rgba(34, 197, 94, 0.15)';
+      color = '#22c55e';
+      border = '1px solid rgba(34, 197, 94, 0.35)';
+    } else if (sLower.includes('sale') || sLower.includes('team')) {
+      icon = '💼';
+      bg = 'rgba(168, 85, 247, 0.15)';
+      color = '#c084fc';
+      border = '1px solid rgba(168, 85, 247, 0.35)';
+    }
+
+    const badgeHTML = `<div style="background:${bg}; color:${color}; border:${border}; border-radius:8px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;"><span>${icon}</span> <span>Referred via <strong>${src}</strong></span></div>`;
+
+    if (invBadge) {
+      invBadge.innerHTML = badgeHTML;
+      invBadge.style.display = 'block';
+    }
+    if (pilotBadge) {
+      pilotBadge.innerHTML = badgeHTML;
+      pilotBadge.style.display = 'block';
+    }
   }
 }
 

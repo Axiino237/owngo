@@ -16,6 +16,28 @@
   <link href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/font/lucide.min.css" rel="stylesheet" />
   <!-- Canvas Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- Immediate Lead Source Tracker (Runs before DOM or external scripts) -->
+  <script>
+    (function () {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        var s = p.get('ref') || p.get('source') || p.get('utm_source') || p.get('src') || p.get('channel');
+        if (!s && window.location.hash && window.location.hash.indexOf('ref=') !== -1) {
+          var hashParts = window.location.hash.split('?');
+          if (hashParts.length > 1) {
+            var hp = new URLSearchParams(hashParts[1]);
+            s = hp.get('ref') || hp.get('source') || hp.get('utm_source') || hp.get('src') || hp.get('channel');
+          }
+        }
+        if (s && s.trim()) {
+          var clean = s.trim();
+          sessionStorage.setItem('owngo_lead_source', clean);
+          localStorage.setItem('owngo_lead_source', clean);
+          document.cookie = "owngo_lead_source=" + encodeURIComponent(clean) + "; path=/; max-age=2592000; SameSite=Lax";
+        }
+      } catch (e) { }
+    })();
+  </script>
 </head>
 
 <body class="dark-theme">
@@ -1502,6 +1524,8 @@
         </div>
         <!-- Partner Form -->
         <form class="booking-form" id="investor-booking-form">
+          <input type="hidden" id="investor-source-hidden" name="source" value="Direct Website" />
+          <div id="investor-source-badge" style="display:none; margin-bottom:14px; font-size:12px; font-weight:700; padding:8px 12px; border-radius:8px;"></div>
           <div class="form-group">
             <label class="form-label" data-i18n="flbl_1">Full Legal Name (as per Aadhaar / PAN)</label>
             <input class="form-input" id="investor-name" placeholder="e.g. Aravindhan K" required="" type="text" />
@@ -1614,6 +1638,8 @@
         </div>
         <!-- Pilot Application Form -->
         <form class="booking-form" id="pilot-booking-form">
+          <input type="hidden" id="pilot-source-hidden" name="source" value="Direct Website" />
+          <div id="pilot-source-badge" style="display:none; margin-bottom:14px; font-size:12px; font-weight:700; padding:8px 12px; border-radius:8px;"></div>
           <div class="form-group">
             <label class="form-label" data-i18n="plbl_1">Full Name (Driver Name)</label>
             <input class="form-input" id="pilot-name" placeholder="e.g. Murugan S" required="" type="text" />
@@ -1780,8 +1806,8 @@
   </div>
   <!-- Scripts -->
   <script src="assets/js/lucide.min.js"></script>
-  <script src="assets/js/translations.js?v=18.3"></script>
-  <script src="assets/js/main.js?v=18.3"></script>
+  <script src="assets/js/translations.js?v=18.5"></script>
+  <script src="assets/js/main.js?v=18.5"></script>
 </body>
 
 </html>
