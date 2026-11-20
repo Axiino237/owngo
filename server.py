@@ -974,147 +974,425 @@ async def admin_portal(request: Request):
     <head>
         <meta charset="UTF-8">
         <title>OWNGO Mobility - Lead &amp; Pilot Management Dashboard</title>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
         <style>
-            body {{ font-family: 'Plus Jakarta Sans', sans-serif; background:#070a0e; color:#f8fafc; margin:0; padding:30px; }}
+            * {{ box-sizing: border-box; }}
+            body {{ font-family: 'Plus Jakarta Sans', sans-serif; background:#070a0e; color:#f8fafc; margin:0; padding:0; display:flex; min-height:100vh; }}
+            
+            /* Modern Sidebar Layout */
+            .sidebar {{
+                width: 280px;
+                background: #0a1017;
+                border-right: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                flex-direction: column;
+                padding: 24px 18px;
+                position: sticky;
+                top: 0;
+                height: 100vh;
+                flex-shrink: 0;
+            }}
+            .sidebar-brand {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding-bottom: 20px;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                margin-bottom: 18px;
+            }}
+            .brand-logo {{
+                font-family: 'Outfit', sans-serif;
+                font-size: 24px;
+                font-weight: 900;
+                color: #fff;
+                letter-spacing: -0.5px;
+            }}
+            .brand-logo span {{ color: #10b981; }}
+            .brand-sub {{ font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }}
+
+            .admin-user-card {{
+                background: #111a24;
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 12px;
+                padding: 12px 14px;
+                margin-bottom: 22px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            .user-avatar {{
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: rgba(16,185,129,0.15);
+                color: #10b981;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+                font-weight: bold;
+            }}
+
+            .nav-menu {{
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                flex: 1;
+            }}
+            .nav-title {{
+                font-size: 11px;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                font-weight: 700;
+                padding: 0 12px 6px;
+            }}
+            .admin-nav-item {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 13px 16px;
+                border-radius: 12px;
+                color: #94a3b8;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                border: 1px solid transparent;
+                transition: all 0.2s ease;
+                background: transparent;
+            }}
+            .admin-nav-item:hover {{
+                background: rgba(255,255,255,0.05);
+                color: #fff;
+            }}
+            .admin-nav-item.active {{
+                background: rgba(16,185,129,0.12);
+                color: #10b981;
+                border-color: rgba(16,185,129,0.3);
+            }}
+            .admin-nav-item.active .nav-badge {{
+                background: #10b981;
+                color: #04200f;
+            }}
+            .nav-badge {{
+                background: #1e293b;
+                color: #94a3b8;
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }}
+
+            .sidebar-footer {{
+                padding-top: 18px;
+                border-top: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }}
+            .footer-btn {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+            }}
+
+            /* Main Content Area */
+            .main-content {{
+                flex: 1;
+                padding: 30px 40px;
+                overflow-y: auto;
+                height: 100vh;
+            }}
+            .top-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 24px;
+                flex-wrap: wrap;
+                gap: 14px;
+            }}
+            .page-title {{
+                font-family: 'Outfit', sans-serif;
+                font-size: 26px;
+                font-weight: 800;
+                color: #fff;
+                margin: 0;
+            }}
+            .page-subtitle {{
+                color: #94a3b8;
+                font-size: 13px;
+                margin: 4px 0 0;
+            }}
+
+            .stats-grid {{ display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:24px; }}
+            .stat-box {{ background:#0f1722; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; }}
+            .stat-val {{ font-family:'Outfit'; font-size:30px; font-weight:900; color:#22c55e; margin:6px 0; }}
+            .stat-lbl {{ font-size:12px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; }}
+            
             .card {{ background:#0f1722; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; margin-bottom:24px; }}
-            .stats-grid {{ display:grid; grid-template-columns: repeat(4, 1fr); gap:20px; margin-bottom:24px; }}
-            .stat-box {{ background:#141f2e; border:1px solid rgba(34,197,94,0.2); border-radius:14px; padding:20px; }}
-            .stat-val {{ font-family:'Outfit'; font-size:32px; font-weight:900; color:#22c55e; margin:6px 0; }}
-            .stat-lbl {{ font-size:13px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; }}
             table {{ width:100%; border-collapse:collapse; text-align:left; }}
             th {{ background:rgba(255,255,255,0.04); padding:14px 16px; font-size:13px; text-transform:uppercase; color:#94a3b8; border-bottom:1px solid #233140; }}
-            .btn {{ background:#10b981; color:#04200f; padding:10px 20px; border-radius:30px; font-weight:700; text-decoration:none; display:inline-block; }}
+            .btn {{ background:#10b981; color:#04200f; padding:8px 16px; border-radius:20px; font-weight:700; text-decoration:none; display:inline-block; font-size:13px; }}
         </style>
     </head>
     <body>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-            <div>
-                <h1 style="font-family:'Outfit'; font-size:28px; margin:0; color:#fff;">⚡ OWNGO Admin &amp; Lead Management Portal</h1>
-                <p style="color:#94a3b8; margin:4px 0 0;">Connected to SQLite Database (<code>{DB_PATH}</code>) &amp; Automated Email Notification Engine</p>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <span style="font-size:13px; color:#cbd5e1; background:rgba(255,255,255,0.06); padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">👤 <strong>info@owngo.in</strong></span>
-                <a href="/" class="btn" style="background:rgba(255,255,255,0.08); color:#fff;">&larr; View Website</a>
-                <a href="/admin/logout" class="btn" style="background:#ef4444; color:#fff;">Logout 🔒</a>
-            </div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-box">
-                <div class="stat-lbl">Fleet Partner Leads</div>
-                <div class="stat-val">{len(leads)}</div>
-                <div style="font-size:12px; color:#94a3b8;">₹1 Lakh Investors</div>
-            </div>
-            <div class="stat-box" style="border-color: rgba(250,204,21,0.25);">
-                <div class="stat-lbl">EV Pilot Applicants</div>
-                <div class="stat-val" style="color:#facc15;">{len(pilots)}</div>
-                <div style="font-size:12px; color:#94a3b8;">₹25,000/Mo Salary Pilots</div>
-            </div>
-            <div class="stat-box" style="border-color: rgba(6,182,212,0.25);">
-                <div class="stat-lbl">Unique Device Views</div>
-                <div class="stat-val" style="color:#06b6d4;">{unique_devices}</div>
-                <div style="font-size:12px; color:#94a3b8;">Strict: 1 Device = 1 View Only</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-lbl">Notification Engine</div>
-                <div class="stat-val" style="color:#a855f7; font-size:20px; margin:12px 0;">ACTIVE (Auto-Log)</div>
-                <div style="font-size:12px; color:#94a3b8;">Target: {NOTIFICATION_EMAIL}</div>
-            </div>
-        </div>
-
-        <!-- Section: Referral Link Generator -->
-        <div class="card" style="border-color: rgba(56, 189, 248, 0.25); background: #0c1622;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div style="font-size: 28px;">⚡</div>
                 <div>
-                    <h3 style="font-family:'Outfit'; font-size:17px; margin:0; color:#38bdf8;">🔗 Quick Marketing &amp; Sales Referral Links</h3>
-                    <p style="color:#94a3b8; font-size:12px; margin:3px 0 0;">Share these links across channels. When a user applies, the exact source appears automatically in the table below!</p>
+                    <div class="brand-logo">OWN<span>GO</span></div>
+                    <div class="brand-sub">Mobility Admin Console</div>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
-                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:12px; color:#f43f5e; font-weight:700;">📸 Instagram Bio / Story</div>
-                        <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=instagram#apply</code>
-                    </div>
-                    <button onclick="copyToClipboard('https://owngo.in/?ref=instagram#apply', this)" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
-                </div>
-                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:12px; color:#ef4444; font-weight:700;">▶️ YouTube Description / Video</div>
-                        <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=youtube#apply</code>
-                    </div>
-                    <button onclick="copyToClipboard('https://owngo.in/?ref=youtube#apply', this)" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
-                </div>
-                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:12px; color:#22c55e; font-weight:700;">💬 WhatsApp Broadcast / Status</div>
-                        <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=whatsapp#apply</code>
-                    </div>
-                    <button onclick="copyToClipboard('https://owngo.in/?ref=whatsapp#apply', this)" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
-                </div>
-                <div style="background:#141f2e; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; gap:8px; align-items:center;">
-                    <div style="flex:1;">
-                        <div style="font-size:12px; color:#c084fc; font-weight:700;">💼 Custom Sales Person Link</div>
-                        <input id="customSalesTag" placeholder="e.g. rahul or dinesh" style="background:#070a0e; border:1px solid #233140; color:#fff; padding:4px 8px; border-radius:6px; font-size:11px; width:90%; margin-top:2px;" />
-                    </div>
-                    <button onclick="copySalesLink(this)" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700; white-space:nowrap;">Copy Link</button>
-                </div>
-            </div>
-        </div>
 
-        <!-- Section 1: Partner Leads -->
-        <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#10b981;">👥 Registered Fleet Partner Applications (₹1 Lakh)</h2>
-                <span style="font-size:13px; color:#94a3b8;">Total: {len(leads)}</span>
+            <div class="admin-user-card">
+                <div class="user-avatar">👤</div>
+                <div style="overflow:hidden;">
+                    <div style="font-size:13px; font-weight:700; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">info@owngo.in</div>
+                    <div style="font-size:11px; color:#10b981; font-weight:600;">Super Administrator</div>
+                </div>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Lead ID</th>
-                        <th>Investor Name</th>
-                        <th>Phone / WhatsApp</th>
-                        <th>Autos Count</th>
-                        <th>Target City</th>
-                        <th>Lead Source / Channel</th>
-                        <th>Notification</th>
-                        <th>Date &amp; Time (IST)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {partner_rows_html}
-                </tbody>
-            </table>
-        </div>
 
-        <!-- Section 2: EV Pilot Applications -->
-        <div class="card" style="border-color: rgba(250,204,21,0.2);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#facc15;">🛺 Registered EV Pilot Applications (₹25,000/Mo Salary)</h2>
-                <span style="font-size:13px; color:#94a3b8;">Total: {len(pilots)}</span>
+            <div class="nav-menu">
+                <div class="nav-title">Navigation Menu</div>
+                
+                <div onclick="showSection('partners')" class="admin-nav-item active" id="nav-partners">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span>👥</span>
+                        <span>Fleet Partners</span>
+                    </span>
+                    <span class="nav-badge" id="badge-partners">{len(leads)}</span>
+                </div>
+
+                <div onclick="showSection('pilots')" class="admin-nav-item" id="nav-pilots">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span>🛺</span>
+                        <span>EV Pilots</span>
+                    </span>
+                    <span class="nav-badge" id="badge-pilots" style="background:#854d0e; color:#facc15;">{len(pilots)}</span>
+                </div>
+
+                <div onclick="showSection('sources')" class="admin-nav-item" id="nav-sources">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span>🔗</span>
+                        <span>Source Links</span>
+                    </span>
+                    <span class="nav-badge" style="background:#075985; color:#38bdf8;">Links</span>
+                </div>
+
+                <div onclick="showSection('all')" class="admin-nav-item" id="nav-all">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span>📊</span>
+                        <span>All Overview</span>
+                    </span>
+                    <span class="nav-badge">All</span>
+                </div>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Pilot ID</th>
-                        <th>Pilot Name</th>
-                        <th>Phone / WhatsApp</th>
-                        <th>License Type</th>
-                        <th>Preferred Operating Hub</th>
-                        <th>Experience</th>
-                        <th>Lead Source / Channel</th>
-                        <th>Status</th>
-                        <th>Date &amp; Time (IST)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {pilot_rows_html}
-                </tbody>
-            </table>
-        </div>
+
+            <div class="sidebar-footer">
+                <a href="/" class="footer-btn" style="background:rgba(255,255,255,0.06); color:#cbd5e1;">
+                    <span>🌐</span>
+                    <span>View Live Website</span>
+                </a>
+                <a href="/admin/logout" class="footer-btn" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);">
+                    <span>🔒</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <div class="top-header">
+                <div>
+                    <h1 class="page-title" id="page-title">👥 Registered Fleet Partner Applications (₹1 Lakh)</h1>
+                    <p class="page-subtitle" id="page-subtitle">Connected to SQLite Database &amp; Instant Email Notification Engine</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="window.location.reload()" style="background:#141f2e; border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <span>🔄</span> Refresh Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-grid">
+                <div class="stat-box" style="border-color: rgba(16,185,129,0.25);">
+                    <div class="stat-lbl">Fleet Partners</div>
+                    <div class="stat-val" style="color:#10b981;">{len(leads)}</div>
+                    <div style="font-size:12px; color:#94a3b8;">₹1 Lakh Investors</div>
+                </div>
+                <div class="stat-box" style="border-color: rgba(250,204,21,0.25);">
+                    <div class="stat-lbl">EV Pilot Applicants</div>
+                    <div class="stat-val" style="color:#facc15;">{len(pilots)}</div>
+                    <div style="font-size:12px; color:#94a3b8;">₹25,000/Mo Salary Pilots</div>
+                </div>
+                <div class="stat-box" style="border-color: rgba(6,182,212,0.25);">
+                    <div class="stat-lbl">Unique Device Views</div>
+                    <div class="stat-val" style="color:#06b6d4;">{unique_devices}</div>
+                    <div style="font-size:12px; color:#94a3b8;">1 Real Device = 1 Count</div>
+                </div>
+                <div class="stat-box" style="border-color: rgba(168,85,247,0.25);">
+                    <div class="stat-lbl">Notification Engine</div>
+                    <div class="stat-val" style="color:#a855f7; font-size:18px; margin:12px 0;">ACTIVE (Auto-Log)</div>
+                    <div style="font-size:12px; color:#94a3b8;">Target: {NOTIFICATION_EMAIL}</div>
+                </div>
+            </div>
+
+            <!-- SECTION: SOURCE LINKS -->
+            <div class="card" id="sec-sources" style="border-color: rgba(56, 189, 248, 0.25); background: #0c1622; display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h2 style="font-family:'Outfit'; font-size:18px; margin:0; color:#38bdf8;">🔗 Quick Marketing &amp; Sales Referral Links</h2>
+                        <p style="color:#94a3b8; font-size:13px; margin:4px 0 0;">Share these links across channels. When someone applies, their exact source appears automatically in the table!</p>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+                    <div style="background:#141f2e; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:12px; color:#f43f5e; font-weight:700;">📸 Instagram Bio / Story</div>
+                            <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=instagram#apply</code>
+                        </div>
+                        <button onclick="copyToClipboard('https://owngo.in/?ref=instagram#apply', this)" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3); border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
+                    </div>
+                    <div style="background:#141f2e; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:12px; color:#ef4444; font-weight:700;">▶️ YouTube Description / Video</div>
+                            <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=youtube#apply</code>
+                        </div>
+                        <button onclick="copyToClipboard('https://owngo.in/?ref=youtube#apply', this)" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
+                    </div>
+                    <div style="background:#141f2e; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:12px; color:#22c55e; font-weight:700;">💬 WhatsApp Broadcast / Status</div>
+                            <code style="font-size:11px; color:#cbd5e1;">https://owngo.in/?ref=whatsapp#apply</code>
+                        </div>
+                        <button onclick="copyToClipboard('https://owngo.in/?ref=whatsapp#apply', this)" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:700;">Copy</button>
+                    </div>
+                    <div style="background:#141f2e; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); display:flex; gap:8px; align-items:center;">
+                        <div style="flex:1;">
+                            <div style="font-size:12px; color:#c084fc; font-weight:700;">💼 Custom Sales Person Link</div>
+                            <input id="customSalesTag" placeholder="e.g. rahul or dinesh" style="background:#070a0e; border:1px solid #233140; color:#fff; padding:6px 10px; border-radius:6px; font-size:11px; width:90%; margin-top:2px;" />
+                        </div>
+                        <button onclick="copySalesLink(this)" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:700; white-space:nowrap;">Copy Link</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: PARTNER LEADS -->
+            <div class="card" id="sec-partners">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#10b981;">👥 Registered Fleet Partner Applications (₹1 Lakh)</h2>
+                    <span style="font-size:13px; color:#94a3b8;">Total: {len(leads)}</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Lead ID</th>
+                            <th>Investor Name</th>
+                            <th>Phone / WhatsApp</th>
+                            <th>Autos Count</th>
+                            <th>Target City</th>
+                            <th>Lead Source / Channel</th>
+                            <th>Notification</th>
+                            <th>Date &amp; Time (IST)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {partner_rows_html}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SECTION: EV PILOT APPLICATIONS -->
+            <div class="card" id="sec-pilots" style="border-color: rgba(250,204,21,0.2); display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="font-family:'Outfit'; font-size:20px; margin:0; color:#facc15;">🛺 Registered EV Pilot Applications (₹25,000/Mo Salary)</h2>
+                    <span style="font-size:13px; color:#94a3b8;">Total: {len(pilots)}</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pilot ID</th>
+                            <th>Pilot Name</th>
+                            <th>Phone / WhatsApp</th>
+                            <th>License Type</th>
+                            <th>Preferred Operating Hub</th>
+                            <th>Experience</th>
+                            <th>Lead Source / Channel</th>
+                            <th>Status</th>
+                            <th>Date &amp; Time (IST)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pilot_rows_html}
+                    </tbody>
+                </table>
+            </div>
+        </main>
 
         <script>
+        function showSection(secId) {{
+            document.querySelectorAll('.admin-nav-item').forEach(el => el.classList.remove('active'));
+            const navBtn = document.getElementById('nav-' + secId);
+            if (navBtn) navBtn.classList.add('active');
+
+            const pTitle = document.getElementById('page-title');
+            const pSub = document.getElementById('page-subtitle');
+
+            const secPartners = document.getElementById('sec-partners');
+            const secPilots = document.getElementById('sec-pilots');
+            const secSources = document.getElementById('sec-sources');
+
+            if (secId === 'all') {{
+                secPartners.style.display = 'block';
+                secPilots.style.display = 'block';
+                secSources.style.display = 'block';
+                pTitle.innerText = '📊 Complete Dashboard Overview (All Sections)';
+                pSub.innerText = 'Viewing Fleet Partners, EV Pilots, and Marketing Referral Generator';
+            }} else if (secId === 'partners') {{
+                secPartners.style.display = 'block';
+                secPilots.style.display = 'none';
+                secSources.style.display = 'none';
+                pTitle.innerText = '👥 Registered Fleet Partner Applications (₹1 Lakh)';
+                pSub.innerText = 'All verified investor leads recorded in SQLite with phone, autos, and source';
+            }} else if (secId === 'pilots') {{
+                secPartners.style.display = 'none';
+                secPilots.style.display = 'block';
+                secSources.style.display = 'none';
+                pTitle.innerText = '🛺 Registered EV Pilot Applications (₹25,000/Mo Salary)';
+                pSub.innerText = 'Full-time commercial EV auto drivers registered for immediate fleet deployment';
+            }} else if (secId === 'sources') {{
+                secPartners.style.display = 'none';
+                secPilots.style.display = 'none';
+                secSources.style.display = 'block';
+                pTitle.innerText = '🔗 Quick Marketing & Sales Referral Links';
+                pSub.innerText = 'Generate customized links for Instagram, YouTube, WhatsApp & Sales Team';
+            }}
+
+            try {{
+                history.replaceState(null, null, '#' + secId);
+            }} catch(e) {{}}
+        }}
+
+        // Check hash on page load
+        window.addEventListener('DOMContentLoaded', () => {{
+            const hash = (window.location.hash || '').replace('#', '').trim();
+            if (hash === 'pilots' || hash === 'sources' || hash === 'all' || hash === 'partners') {{
+                showSection(hash);
+            }} else {{
+                showSection('partners');
+            }}
+        }});
+
         function copyToClipboard(text, btn) {{
             navigator.clipboard.writeText(text).then(() => {{
                 const orig = btn.innerText;
@@ -1129,21 +1407,6 @@ async def admin_portal(request: Request):
             const tag = (tagInput && tagInput.value.trim() ? tagInput.value.trim() : 'sales-team').replace(/\\s+/g, '-').toLowerCase();
             const url = `https://owngo.in/?ref=sales-${{tag}}#apply`;
             copyToClipboard(url, btn);
-        }}
-        async function clearAllLeads() {{
-            if (!confirm('⚠️ Are you sure you want to permanently clear all leads and pilot applications? This cannot be undone.')) return;
-            try {{
-                const res = await fetch('/api/admin/clear-leads', {{ method: 'POST' }});
-                const data = await res.json();
-                if (data.success) {{
-                    alert('All leads removed successfully.');
-                    window.location.reload();
-                }} else {{
-                    alert('Error: ' + (data.message || 'Failed to clear'));
-                }}
-            }} catch (e) {{
-                alert('Request failed: ' + e);
-            }}
         }}
         </script>
     </body>
