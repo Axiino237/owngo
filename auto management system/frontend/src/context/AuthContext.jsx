@@ -124,7 +124,10 @@ export const AuthProvider = ({ children }) => {
    */
   const hasPermission = useCallback((module, screen, action = 'canView') => {
     if (!user) return false;
-    if (user.isSuperAdmin || user.role?.level === 'super_admin') return true;
+
+    // Safety guard: only prevent locking out the permissions configuration screens themselves
+    const isPermManager = module === 'permissions' && ['permissions-list', 'permission-edit'].includes(screen);
+    if (user.isSuperAdmin && isPermManager) return true;
 
     // Support array of screens (OR condition: true if any screen permitted)
     if (Array.isArray(screen)) {

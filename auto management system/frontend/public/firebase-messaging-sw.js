@@ -10,43 +10,50 @@ self.addEventListener('activate', (event) => {
 
 // Safely attempt Firebase Messaging initialization for Chrome without breaking Safari / iOS
 try {
-  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+  const urlParams = new URLSearchParams(self.location.search);
+  const swApiKey = urlParams.get('apiKey');
+  const swProjectId = urlParams.get('projectId') || 'crmaxiino';
+  const swSenderId = urlParams.get('messagingSenderId') || '754528694644';
+  const swAppId = urlParams.get('appId') || '1:754528694644:web:05ffdc1b02603f0ec93c21';
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyClv7QXKmmrS60yvDeIQC3hn_3u48QY8Zg",
-    authDomain: "crmaxiino.firebaseapp.com",
-    projectId: "crmaxiino",
-    storageBucket: "crmaxiino.firebasestorage.app",
-    messagingSenderId: "754528694644",
-    appId: "1:754528694644:web:05ffdc1b02603f0ec93c21",
-    measurementId: "G-HQKMWWNFEN"
-  };
+  if (swApiKey) {
+    importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+    importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
-  firebase.initializeApp(firebaseConfig);
-  if (firebase.messaging && typeof firebase.messaging.isSupported === 'function' && firebase.messaging.isSupported()) {
-    const messaging = firebase.messaging();
-    messaging.onBackgroundMessage((payload) => {
-      // If the push has no real content or is an internal sync, ignore completely
-      if (!payload.notification?.title && !payload.data?.title && !payload.notification?.body && !payload.data?.body) {
-        return;
-      }
-      const title = payload.notification?.title || payload.data?.title;
-      const body = payload.notification?.body || payload.data?.body;
-      if (!title && !body) return;
+    const firebaseConfig = {
+      apiKey: swApiKey,
+      authDomain: `${swProjectId}.firebaseapp.com`,
+      projectId: swProjectId,
+      storageBucket: `${swProjectId}.firebasestorage.app`,
+      messagingSenderId: swSenderId,
+      appId: swAppId
+    };
 
-      const targetUrl = payload.data?.url || payload.data?.link || '/chat';
-      const iconUrl = new URL(payload.notification?.icon || '/icon-192.png', self.location.origin).href;
+    firebase.initializeApp(firebaseConfig);
+    if (firebase.messaging && typeof firebase.messaging.isSupported === 'function' && firebase.messaging.isSupported()) {
+      const messaging = firebase.messaging();
+      messaging.onBackgroundMessage((payload) => {
+        // If the push has no real content or is an internal sync, ignore completely
+        if (!payload.notification?.title && !payload.data?.title && !payload.notification?.body && !payload.data?.body) {
+          return;
+        }
+        const title = payload.notification?.title || payload.data?.title;
+        const body = payload.notification?.body || payload.data?.body;
+        if (!title && !body) return;
 
-      self.registration.showNotification(title || 'OWNGO Notification', {
-        body: body || '',
-        icon: iconUrl,
-        badge: new URL('/icon-192.png', self.location.origin).href,
-        tag: payload.data?.tag || `owngo-${Date.now()}`,
-        renotify: true,
-        data: { url: targetUrl }
+        const targetUrl = payload.data?.url || payload.data?.link || '/chat';
+        const iconUrl = new URL(payload.notification?.icon || '/icon-192.png', self.location.origin).href;
+
+        self.registration.showNotification(title || 'OWNGO Notification', {
+          body: body || '',
+          icon: iconUrl,
+          badge: new URL('/icon-192.png', self.location.origin).href,
+          tag: payload.data?.tag || `owngo-${Date.now()}`,
+          renotify: true,
+          data: { url: targetUrl }
+        });
       });
-    });
+    }
   }
 } catch (fbErr) {
   // Gracefully ignored on Safari, iOS PWA, or offline startup

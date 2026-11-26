@@ -83,7 +83,10 @@ export const isSafari = () => {
 export const registerServiceWorker = async () => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null;
   try {
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+    const swUrl = firebaseConfig?.apiKey 
+      ? `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfig.apiKey)}&projectId=${encodeURIComponent(firebaseConfig.projectId || '')}&messagingSenderId=${encodeURIComponent(firebaseConfig.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfig.appId || '')}`
+      : '/firebase-messaging-sw.js';
+    const registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
     console.log('🔥 [Service Worker] Registered successfully with scope:', registration.scope);
     return registration;
   } catch (err) {

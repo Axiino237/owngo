@@ -38,11 +38,6 @@ const ProtectedRoute = ({
     return <Navigate to={`/login${redirectParam}`} replace />;
   }
 
-  // Super Admin has full unrestricted access across all screens
-  if (user.isSuperAdmin || user.role?.level === 'super_admin') {
-    return children;
-  }
-
   if (superAdminOnly && !user.isSuperAdmin && user.role?.level !== 'super_admin') {
     const fallback = getFirstAuthorizedPath();
     return <Navigate to={fallback} replace />;

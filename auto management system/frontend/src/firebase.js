@@ -6,25 +6,27 @@ import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 export const firebaseConfig = {
-  apiKey: "AIzaSyClv7QXKmmrS60yvDeIQC3hn_3u48QY8Zg",
-  authDomain: "crmaxiino.firebaseapp.com",
-  projectId: "crmaxiino",
-  storageBucket: "crmaxiino.firebasestorage.app",
-  messagingSenderId: "754528694644",
-  appId: "1:754528694644:web:05ffdc1b02603f0ec93c21",
-  measurementId: "G-HQKMWWNFEN"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "crmaxiino.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "crmaxiino",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "crmaxiino.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "754528694644",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:754528694644:web:05ffdc1b02603f0ec93c21",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-HQKMWWNFEN"
 };
 
-// Initialize Firebase
-export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Initialize Firebase only if an API key is provided
+export const app = firebaseConfig.apiKey 
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0])
+  : null;
 
 // Initialize Analytics safely
 let analyticsInstance = null;
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && app) {
   isAnalyticsSupported().then((supported) => {
     if (supported) {
       analyticsInstance = getAnalytics(app);
-      console.log('🔥 [Firebase Analytics] Initialized successfully (ID: G-HQKMWWNFEN)');
+      console.log('🔥 [Firebase Analytics] Initialized successfully');
     }
   }).catch((err) => {
     console.warn('Firebase Analytics check:', err);
@@ -46,7 +48,7 @@ export const logFirebaseEvent = (eventName, params = {}) => {
 // Initialize Messaging instance
 let messagingInstance = null;
 export const getFirebaseMessaging = async () => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || !app) return null;
   if (messagingInstance) return messagingInstance;
   try {
     const supported = await isMessagingSupported();

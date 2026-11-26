@@ -1,15 +1,19 @@
 const webpush = require('web-push');
 
 // Configure VAPID details with keys from environment
-const publicKey = process.env.VAPID_PUBLIC_KEY || 'BKYTtzSJ6G9CAdBdHClH2tbq-vgQhF8D0GMLzA03VUm7UUZRPuUBn_FK23Adsi9KbJ4TYwG94GqEbSmqSwzcYAU';
-const privateKey = process.env.VAPID_PRIVATE_KEY || 'RgqdUEumY_sy8rTX_lwj1YKZUP8smXQbYtpwlMXJHgk';
+const publicKey = process.env.VAPID_PUBLIC_KEY;
+const privateKey = process.env.VAPID_PRIVATE_KEY;
 const subject = process.env.VAPID_SUBJECT || 'mailto:admin@crm.axiino.com';
 
-try {
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  console.log('🔔 [Web Push] VAPID details initialized successfully.');
-} catch (err) {
-  console.error('❌ [Web Push] Failed to set VAPID details:', err.message);
+if (publicKey && privateKey) {
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    console.log('🔔 [Web Push] VAPID details initialized successfully.');
+  } catch (err) {
+    console.error('❌ [Web Push] Failed to set VAPID details:', err.message);
+  }
+} else {
+  console.warn('⚠️ [Web Push] VAPID keys not configured in environment.');
 }
 
 /**
