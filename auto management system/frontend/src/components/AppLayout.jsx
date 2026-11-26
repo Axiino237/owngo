@@ -42,13 +42,13 @@ const Sidebar = ({ mobileOpen, onClose }) => {
         { to: '/uam/users', icon: <RiTeamLine />, label: 'Users', show: hasPermission('uam', 'users-list', 'canView') },
         { to: '/uam/roles', icon: <RiShieldUserLine />, label: 'Roles', show: hasPermission('roles', 'roles-list', 'canView') },
         { to: '/uam/permissions', icon: <RiKey2Line />, label: 'Permissions', show: hasPermission('permissions', 'permissions-list', 'canView') },
-        { to: '/uam/status-master', icon: <RiSettings4Line />, label: 'Status Master', show: hasPermission('uam', 'status-master', 'canView') || user?.isSuperAdmin },
+        { to: '/uam/status-master', icon: <RiSettings4Line />, label: 'Status Master', show: hasPermission('uam', 'status-master', 'canView') },
         { to: '/audit-logs', icon: <RiFileList2Line />, label: 'Audit Logs', show: hasPermission('uam', 'audit-logs-list', 'canView') }
       ]
     },
     {
       section: 'Organization', items: [
-        { to: '/organizations', icon: <RiBuildingLine />, label: 'Organizations', show: user?.isSuperAdmin && hasPermission('organizations', 'organizations-list', 'canView') },
+        { to: '/organizations', icon: <RiBuildingLine />, label: 'Organizations', show: hasPermission('organizations', 'organizations-list', 'canView') },
         { to: '/companies', icon: <RiBuilding2Line />, label: 'Companies', show: hasPermission('companies', 'companies-list', 'canView') },
         { to: '/departments', icon: <RiGroupLine />, label: 'Departments', show: hasPermission('departments', 'departments-list', 'canView') },
         { to: '/hierarchy', icon: <RiNodeTree />, label: 'Hierarchy Studio', show: hasPermission('departments', ['hierarchy-studio', 'departments-list'], 'canView') },
@@ -59,13 +59,13 @@ const Sidebar = ({ mobileOpen, onClose }) => {
     {
       section: 'CRM & Sales', items: [
         { to: '/leads', icon: <RiTargetLine />, label: 'Leads', show: hasPermission('leads', 'leads-list', 'canView') },
-        { to: '/partners', icon: <RiUserHeartLine />, label: 'Fleet Partners', show: hasPermission('partners', 'partners-list', 'canView') || isDirector },
-        { to: '/loan-applications', icon: <RiBankCardLine />, label: 'Loan Applications', show: hasPermission('finance', 'loan-applications-list', 'canView') || isDirector },
+        { to: '/partners', icon: <RiUserHeartLine />, label: 'Fleet Partners', show: hasPermission('partners', 'partners-list', 'canView') },
+        { to: '/loan-applications', icon: <RiBankCardLine />, label: 'Loan Applications', show: hasPermission('finance', 'loan-applications-list', 'canView') },
         { to: '/job-requests', icon: <RiSteering2Line />, label: 'Job Requests', show: hasPermission('jobs', 'job-requests-list', 'canView') || hasPermission('leads', 'leads-list', 'canView') },
-        { to: '/link-generator', icon: <RiLinkM />, label: 'Link Generator', show: hasPermission('tools', 'link-generator', 'canView') || user?.isSuperAdmin },
+        { to: '/link-generator', icon: <RiLinkM />, label: 'Link Generator', show: hasPermission('tools', 'link-generator', 'canView') },
         { to: '/quotation', icon: <RiFilePaper2Line />, label: 'Quotation', show: hasPermission('quotations', 'quotations-list', 'canView') },
         { to: '/performance', icon: <RiBarChart2Line />, label: 'Performance', show: hasPermission('performance', 'performance-view', 'canView') },
-        { to: '/leaderboard', icon: <RiTrophyLine />, label: 'Leaderboard', show: hasPermission('performance', ['leaderboard', 'performance-view'], 'canView') || user?.isSuperAdmin },
+        { to: '/leaderboard', icon: <RiTrophyLine />, label: 'Leaderboard', show: hasPermission('performance', ['leaderboard', 'performance-view'], 'canView') },
         { to: '/closed-sales', icon: <RiCheckboxCircleLine />, label: 'Closed Sales', show: hasPermission('closed_sales', ['closed-sales-list', 'closed-sales-all'], 'canView') }
       ]
     },
