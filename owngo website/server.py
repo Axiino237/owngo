@@ -10,6 +10,7 @@ Features:
 """
 
 import os
+import re
 import sqlite3
 import smtplib
 import hashlib
@@ -576,16 +577,30 @@ async def register_investor(lead: RegisterLeadRequest, request: Request):
     if not lead.name or not lead.phone:
         raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
 
+    clean_phone = re.sub(r'\D', '', str(lead.phone))[-10:]
+    if len(clean_phone) != 10 or clean_phone[0] not in '6789':
+        raise HTTPException(status_code=400, detail="Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
+
     lead_source = extract_source_from_request(request, lead.source)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    # Strict duplicate phone check
+    cursor.execute("SELECT id, name FROM leads WHERE phone = ? OR phone LIKE ?", (clean_phone, f"%{clean_phone}"))
+    existing = cursor.fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(
+            status_code=409,
+            detail=f"Mobile number {clean_phone} is already registered under Application #{existing[0]} ({existing[1]}). Our fleet team is already processing your profile."
+        )
 
     cursor.execute(
         """
         INSERT INTO leads (name, phone, autos_count, city, cibil_score, source)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (lead.name.strip(), lead.phone.strip(), lead.autos, lead.city.strip(), lead.cibil, lead_source)
+        (lead.name.strip(), clean_phone, lead.autos, lead.city.strip(), lead.cibil, lead_source)
     )
     lead_id = cursor.lastrowid
     conn.commit()
@@ -595,7 +610,7 @@ async def register_investor(lead: RegisterLeadRequest, request: Request):
     send_email_notification(
         lead_id=lead_id,
         name=lead.name,
-        phone=lead.phone,
+        phone=clean_phone,
         autos=lead.autos,
         city=lead.city,
         cibil=lead.cibil,
@@ -607,7 +622,7 @@ async def register_investor(lead: RegisterLeadRequest, request: Request):
     crm_payload = {
         "leadType": "partner",
         "name": lead.name.strip(),
-        "phone": lead.phone.strip(),
+        "phone": clean_phone,
         "autos": lead.autos,
         "city": lead.city.strip(),
         "cibil": lead.cibil,
@@ -630,16 +645,30 @@ async def register_pilot(pilot: RegisterPilotRequest, request: Request):
     if not pilot.name or not pilot.phone:
         raise HTTPException(status_code=400, detail="Name and Phone are strictly required.")
 
+    clean_phone = re.sub(r'\D', '', str(pilot.phone))[-10:]
+    if len(clean_phone) != 10 or clean_phone[0] not in '6789':
+        raise HTTPException(status_code=400, detail="Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
+
     pilot_source = extract_source_from_request(request, pilot.source)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    # Strict duplicate phone check
+    cursor.execute("SELECT id, name FROM pilot_leads WHERE phone = ? OR phone LIKE ?", (clean_phone, f"%{clean_phone}"))
+    existing = cursor.fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(
+            status_code=409,
+            detail=f"Mobile number {clean_phone} is already registered under Pilot Application #{existing[0]} ({existing[1]}). Our recruitment team is currently reviewing your profile."
+        )
 
     cursor.execute(
         """
         INSERT INTO pilot_leads (name, phone, license_type, preferred_area, experience, source)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (pilot.name.strip(), pilot.phone.strip(), pilot.license_type, pilot.preferred_area, pilot.experience, pilot_source)
+        (pilot.name.strip(), clean_phone, pilot.license_type, pilot.preferred_area, pilot.experience, pilot_source)
     )
     pilot_id = cursor.lastrowid
     conn.commit()
@@ -648,7 +677,7 @@ async def register_pilot(pilot: RegisterPilotRequest, request: Request):
     send_pilot_email_notification(
         pilot_id=pilot_id,
         name=pilot.name,
-        phone=pilot.phone,
+        phone=clean_phone,
         license_type=pilot.license_type,
         preferred_area=pilot.preferred_area,
         experience=pilot.experience,
@@ -659,7 +688,7 @@ async def register_pilot(pilot: RegisterPilotRequest, request: Request):
     source_link = pilot.sourceLink or request.headers.get("referer") or pilot_source
     crm_payload = {
         "name": pilot.name.strip(),
-        "phone": pilot.phone.strip(),
+        "phone": clean_phone,
         "licenseType": pilot.license_type,
         "preferredArea": pilot.preferred_area,
         "experience": pilot.experience,

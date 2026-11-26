@@ -123,12 +123,36 @@ router.post('/', protect, checkPermission('partners', 'partner-create', 'canCrea
       return res.status(400).json({ success: false, message: 'Name and Phone are required' });
     }
 
+    const cleanDigits = (p) => {
+      if (!p) return '';
+      const d = String(p).replace(/\D/g, '');
+      return d.length >= 10 ? d.slice(-10) : d;
+    };
+    const phoneDigits = cleanDigits(phone);
+    if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+    }
+
+    const allLeads = await Lead.findAll({ attributes: ['id', 'name', 'phone', 'status'] });
+    const duplicate = allLeads.find(l => cleanDigits(l.phone) === phoneDigits);
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: `Mobile number ${phoneDigits} is already registered under '${duplicate.name}' (Status: ${duplicate.status}). Duplicate entries are not allowed.`
+      });
+    }
+
+    const autos = parseInt(autosCount, 10) || 1;
+    const capital = autos * 100000;
+
     const partner = await Lead.create({
-      name,
-      phone,
-      email,
+      name: String(name).trim(),
+      phone: phoneDigits,
+      email: email ? String(email).trim() : null,
       city: city || 'Chennai',
-      autosCount: parseInt(autosCount, 10) || 1,
+      autosCount: autos,
+      value: capital,
+      totalValue: capital,
       status: 'Invested',
       source: 'Direct Partner Onboarding',
       leadType: 'partner',

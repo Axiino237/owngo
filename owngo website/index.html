@@ -1548,7 +1548,11 @@
           </div>
           <div class="form-group">
             <label class="form-label" data-i18n="flbl_2">WhatsApp / Phone Number</label>
-            <input class="form-input" id="investor-phone" placeholder="e.g. +91 98765 43210" required="" type="tel" />
+            <div style="display: flex; align-items: center; position: relative;">
+              <span style="display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 14px; background: rgba(255,255,255,0.06); border: 1px solid var(--border-color, #334155); border-right: none; border-radius: 8px 0 0 8px; font-weight: 700; font-size: 15px; color: var(--text-color, #f8fafc); user-select: none;">+91</span>
+              <input class="form-input" id="investor-phone" placeholder="98765 43210" required="" type="tel" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" style="border-radius: 0 8px 8px 0;" />
+            </div>
+            <div id="investor-phone-err" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px; font-weight: 600;"></div>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="form-group">
@@ -1662,7 +1666,11 @@
           </div>
           <div class="form-group">
             <label class="form-label" data-i18n="plbl_2">WhatsApp / Mobile Number</label>
-            <input class="form-input" id="pilot-phone" placeholder="e.g. +91 98765 43210" required="" type="tel" />
+            <div style="display: flex; align-items: center; position: relative;">
+              <span style="display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 14px; background: rgba(255,255,255,0.06); border: 1px solid var(--border-color, #334155); border-right: none; border-radius: 8px 0 0 8px; font-weight: 700; font-size: 15px; color: var(--text-color, #f8fafc); user-select: none;">+91</span>
+              <input class="form-input" id="pilot-phone" placeholder="98765 43210" required="" type="tel" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" style="border-radius: 0 8px 8px 0;" />
+            </div>
+            <div id="pilot-phone-err" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px; font-weight: 600;"></div>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="form-group">

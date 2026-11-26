@@ -64,8 +64,27 @@ router.post('/website', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name and Phone number are required' });
     }
 
+    const cleanDigits = (p) => {
+      if (!p) return '';
+      const d = String(p).replace(/\D/g, '');
+      return d.length >= 10 ? d.slice(-10) : d;
+    };
+    const phoneDigits = cleanDigits(phone);
+    if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+    }
+
+    const allLeads = await Lead.findAll({ attributes: ['id', 'name', 'companyName', 'phone', 'status'] });
+    const duplicate = allLeads.find(l => cleanDigits(l.phone) === phoneDigits);
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: `Mobile number ${phoneDigits} is already registered under lead '${duplicate.name || duplicate.companyName}' (Status: ${duplicate.status}). Duplicate entries are not allowed.`
+      });
+    }
+
     const cleanName = String(name).trim();
-    const cleanPhone = String(phone).trim();
+    const cleanPhone = phoneDigits;
     const resolvedType = (leadType && String(leadType).toLowerCase() === 'pilot') ? 'pilot' : 'partner';
     const resolvedSource = normalizeLeadSource(source, sourceLink);
     const resolvedLink = sourceLink || null;
@@ -672,6 +691,28 @@ router.post('/', checkPermission('leads', 'leads-list', 'canCreate'), async (req
     const effectiveCompany = (companyName || name || '').trim();
     if (!effectiveCompany) return res.status(400).json({ success: false, message: 'Company Name is required' });
 
+    let cleanPhone = null;
+    if (phone) {
+      const cleanDigits = (p) => {
+        if (!p) return '';
+        const d = String(p).replace(/\D/g, '');
+        return d.length >= 10 ? d.slice(-10) : d;
+      };
+      const phoneDigits = cleanDigits(phone);
+      if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+      }
+      const allLeads = await Lead.findAll({ attributes: ['id', 'name', 'companyName', 'phone', 'status'] });
+      const duplicate = allLeads.find(l => cleanDigits(l.phone) === phoneDigits);
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `Mobile number ${phoneDigits} is already registered under lead '${duplicate.name || duplicate.companyName}' (Status: ${duplicate.status}). Duplicate entries are not allowed.`
+        });
+      }
+      cleanPhone = phoneDigits;
+    }
+
     let customCreatedAt = undefined;
     if (createdAt) {
       const isSuper = req.user.isSuperAdmin || req.user.role?.level === 'super_admin';
@@ -702,7 +743,7 @@ router.post('/', checkPermission('leads', 'leads-list', 'canCreate'), async (req
       name: name ? name.trim() : null,
       companyName: (companyName ? companyName.trim() : effectiveCompany) || null,
       email: email || null,
-      phone: phone || null,
+      phone: cleanPhone || null,
       status: leadStatus,
       expo: expo || 'other',
       value: value || 0,
@@ -830,7 +871,26 @@ router.put('/:id', async (req, res, next) => {
     if (name !== undefined) updates.name = name;
     if (companyName !== undefined) updates.companyName = companyName;
     if (email !== undefined) updates.email = email;
-    if (phone !== undefined) updates.phone = phone;
+    if (phone !== undefined && phone !== null && String(phone).trim() !== '') {
+      const cleanDigits = (p) => {
+        if (!p) return '';
+        const d = String(p).replace(/\D/g, '');
+        return d.length >= 10 ? d.slice(-10) : d;
+      };
+      const phoneDigits = cleanDigits(phone);
+      if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+      }
+      const allLeads = await Lead.findAll({ attributes: ['id', 'name', 'companyName', 'phone'] });
+      const duplicate = allLeads.find(l => l.id !== lead.id && cleanDigits(l.phone) === phoneDigits);
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `Mobile number ${phoneDigits} is already registered under lead '${duplicate.name || duplicate.companyName}'. Duplicate entries are not allowed.`
+        });
+      }
+      updates.phone = phoneDigits;
+    }
     if (expo !== undefined) updates.expo = expo;
     if (source !== undefined) updates.source = normalizeLeadSource(source, sourceLink !== undefined ? sourceLink : lead.sourceLink);
     if (sourceLink !== undefined) updates.sourceLink = sourceLink;
@@ -928,7 +988,8 @@ router.put('/:id', async (req, res, next) => {
       updates.status = resolvedStatus;
 
       // When lead is converted, check if eligible for Fleet Partner via Loan App (Strictly for Partner Leads)
-      if (lead.leadType === 'partner' && (resolvedStatus === 'converted' || resolvedStatus === 'Invested')) {
+      const isInvested = (resolvedStatus || '').toLowerCase() === 'invested';
+      if (lead.leadType === 'partner' && (resolvedStatus === 'converted' || isInvested)) {
         const cleanDigits = (p) => {
           if (!p) return '';
           const d = String(p).replace(/\D/g, '');
@@ -948,7 +1009,7 @@ router.put('/:id', async (req, res, next) => {
               updates.cibilScore = lead.cibilScore || '750+ (Loan Verified)';
               loanApp.leadId = lead.id;
               await loanApp.save();
-            } else if (resolvedStatus === 'Invested') {
+            } else if (isInvested) {
               // Loan not approved yet; keep in pipeline as converted until loan eligibility is YES
               updates.status = 'converted';
             }

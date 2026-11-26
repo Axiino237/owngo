@@ -68,17 +68,23 @@ router.post('/website', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Driver name and phone number are required' });
     }
 
+    const cleanDigits = (p) => {
+      if (!p) return '';
+      const d = String(p).replace(/\D/g, '');
+      return d.length >= 10 ? d.slice(-10) : d;
+    };
+    const phoneDigits = cleanDigits(phone);
+    if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+    }
+
     // Find default OwnGo organization
     const org = await Organization.findOne({ where: { code: 'OWNGO' } });
     const orgId = org ? org.id : null;
 
     // Check for existing pending request with same phone
-    let candidate = await JobRequest.findOne({
-      where: {
-        phone: phone.trim(),
-        ...(orgId ? { organizationId: orgId } : {})
-      }
-    });
+    const allPilots = await JobRequest.findAll({ attributes: ['id', 'name', 'phone', 'status', 'notes'] });
+    let candidate = allPilots.find(p => cleanDigits(p.phone) === phoneDigits);
 
     if (candidate) {
       // Append to notes
@@ -88,18 +94,13 @@ router.post('/website', async (req, res) => {
       ].filter(Boolean).join('\n');
 
       await candidate.update({
-        name: name.trim(),
-        email: email ? email.trim() : candidate.email,
-        preferredArea: preferredArea || candidate.preferredArea,
-        licenseType: licenseType || candidate.licenseType,
-        experience: experience || candidate.experience,
-        sourceLink: sourceLink || candidate.sourceLink,
-        notes: updatedNotes
+        notes: updatedNotes,
+        updatedAt: new Date()
       });
 
-      return res.json({
+      return res.status(200).json({
         success: true,
-        message: 'Application updated successfully',
+        message: 'Your EV Pilot profile has been updated! Our recruitment team will call you shortly.',
         data: candidate
       });
     }
@@ -305,9 +306,28 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name and phone are required' });
     }
 
+    const cleanDigits = (p) => {
+      if (!p) return '';
+      const d = String(p).replace(/\D/g, '');
+      return d.length >= 10 ? d.slice(-10) : d;
+    };
+    const phoneDigits = cleanDigits(phone);
+    if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+    }
+
+    const allPilots = await JobRequest.findAll({ attributes: ['id', 'name', 'phone', 'status'] });
+    const duplicate = allPilots.find(p => cleanDigits(p.phone) === phoneDigits);
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: `Mobile number ${phoneDigits} is already registered under candidate '${duplicate.name}' (Status: ${duplicate.status}). Duplicate entries are not allowed.`
+      });
+    }
+
     const candidate = await JobRequest.create({
       name: name.trim(),
-      phone: phone.trim(),
+      phone: phoneDigits,
       email: email ? email.trim() : null,
       city,
       preferredArea,
@@ -366,7 +386,26 @@ router.put('/:id', async (req, res) => {
 
     const updates = {};
     if (name !== undefined) updates.name = name.trim();
-    if (phone !== undefined) updates.phone = phone.trim();
+    if (phone !== undefined && phone !== null && String(phone).trim() !== '') {
+      const cleanDigits = (p) => {
+        if (!p) return '';
+        const d = String(p).replace(/\D/g, '');
+        return d.length >= 10 ? d.slice(-10) : d;
+      };
+      const phoneDigits = cleanDigits(phone);
+      if (phoneDigits.length !== 10 || !['6', '7', '8', '9'].includes(phoneDigits[0])) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9' });
+      }
+      const allPilots = await JobRequest.findAll({ attributes: ['id', 'name', 'phone'] });
+      const duplicate = allPilots.find(p => p.id !== candidate.id && cleanDigits(p.phone) === phoneDigits);
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `Mobile number ${phoneDigits} is already registered under candidate '${duplicate.name}'. Duplicate entries are not allowed.`
+        });
+      }
+      updates.phone = phoneDigits;
+    }
     if (email !== undefined) updates.email = email ? email.trim() : null;
     if (city !== undefined) updates.city = city;
     if (preferredArea !== undefined) updates.preferredArea = preferredArea;

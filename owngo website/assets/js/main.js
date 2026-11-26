@@ -781,17 +781,28 @@ function initBookingForm() {
 
   if (!form) return;
 
+  const phoneInput = document.getElementById('investor-phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const name = document.getElementById('investor-name').value.trim();
-    const phone = document.getElementById('investor-phone').value.trim();
+    const phone = document.getElementById('investor-phone').value.trim().replace(/\D/g, '').slice(-10);
     const autosCount = document.getElementById('investor-autos').value;
     const city = document.getElementById('investor-city').value;
     const cibil = document.getElementById('investor-cibil') ? document.getElementById('investor-cibil').value : 'Good';
 
-    if (!name || !phone) {
-      alert('Please fill your name and phone number');
+    if (!name) {
+      alert('Please fill your full legal name');
+      return;
+    }
+    if (phone.length !== 10 || !['6', '7', '8', '9'].includes(phone[0])) {
+      alert('Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9');
       return;
     }
 
@@ -820,6 +831,18 @@ function initBookingForm() {
 
       const result = await response.json();
 
+      if (!response.ok) {
+        const errMsg = result.detail || result.message || 'Registration failed. Mobile number may already be registered.';
+        if (toast) {
+          toast.innerHTML = `<i class="lucide-alert-triangle" style="color:#ef4444;"></i> <strong>Notice:</strong> ${errMsg}`;
+          toast.classList.add('show');
+          setTimeout(() => toast.classList.remove('show'), 7000);
+        } else {
+          alert(errMsg);
+        }
+        return;
+      }
+
       // Trigger celebratory confetti
       if (window.confetti) {
         window.confetti({
@@ -845,7 +868,7 @@ function initBookingForm() {
     } catch (err) {
       console.error('Registration error:', err);
       if (toast) {
-        toast.innerHTML = `<i class="lucide-check-circle"></i> Thank you ${name}! Application registered.`;
+        toast.innerHTML = `<i class="lucide-alert-circle"></i> Connection error. Please try again.`;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 5000);
       }
@@ -943,17 +966,28 @@ function initPilotBookingForm() {
 
   if (!form) return;
 
+  const phoneInput = document.getElementById('pilot-phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const name = document.getElementById('pilot-name').value.trim();
-    const phone = document.getElementById('pilot-phone').value.trim();
+    const phone = document.getElementById('pilot-phone').value.trim().replace(/\D/g, '').slice(-10);
     const licenseType = document.getElementById('pilot-license') ? document.getElementById('pilot-license').value : 'Auto Rickshaw';
     const preferredArea = document.getElementById('pilot-area') ? document.getElementById('pilot-area').value : 'Central Chennai';
     const experience = document.getElementById('pilot-exp') ? document.getElementById('pilot-exp').value : '1-3 Years';
 
-    if (!name || !phone) {
-      alert('Please fill your name and phone number');
+    if (!name) {
+      alert('Please fill your full name');
+      return;
+    }
+    if (phone.length !== 10 || !['6', '7', '8', '9'].includes(phone[0])) {
+      alert('Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9');
       return;
     }
 
@@ -981,6 +1015,18 @@ function initPilotBookingForm() {
 
       const result = await response.json();
 
+      if (!response.ok) {
+        const errMsg = result.detail || result.message || 'Pilot registration failed. Mobile number may already be registered.';
+        if (toast) {
+          toast.innerHTML = `<i class="lucide-alert-triangle" style="color:#ef4444;"></i> <strong>Notice:</strong> ${errMsg}`;
+          toast.classList.add('show');
+          setTimeout(() => toast.classList.remove('show'), 7000);
+        } else {
+          alert(errMsg);
+        }
+        return;
+      }
+
       if (window.confetti) {
         window.confetti({
           particleCount: 80,
@@ -1005,7 +1051,7 @@ function initPilotBookingForm() {
     } catch (err) {
       console.error('Pilot registration error:', err);
       if (toast) {
-        toast.innerHTML = `<i class="lucide-check-circle"></i> Thank you ${name}! Application registered.`;
+        toast.innerHTML = `<i class="lucide-alert-circle"></i> Connection error. Please try again.`;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 5000);
       }
