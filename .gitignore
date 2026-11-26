@@ -1,5 +1,23 @@
-# Python
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Environment variables & secrets
+.env
+.env*
+**/.env
+**/.env*
+!.env.example
+
+# Python cache & virtual environments
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -8,26 +26,37 @@ env/
 venv/
 .venv/
 
-# Database & runtime files
+# Databases, local data & logs
 *.db
 *.sqlite
 *.sqlite3
 *.log
 *.bak
+crm_pgdata/
+**/crm_pgdata/
 
-# Deployment packages & archives
+# Deployment packages & heavy archives
 *.tar.gz
 *.zip
+*.rar
 owngo_deploy.tar.gz
 
-# Local scratch / test scripts
-inspect_*.py
+# Scratch, temporary test scripts & one-offs in root
+check_*.py
+check_*.js
+test_*.py
+test_*.js
 update_*.py
+grant_*.py
+verify_*.py
+deploy_*.py
+inspect_*.py
 remove_loading_text.py
 translate_everything.py
-test_*.py
+scratch/
+**/scratch/
 
-# Temporary screenshots & verification images in root
+# Temporary screenshots & verification images
 /*_screenshot.png
 /mobile_*.png
 /redesign_*.png
@@ -35,8 +64,6 @@ test_*.py
 /test_*.png
 /exact_spot_crop.jpg
 /spots_centered.jpg
-
-# Unused heavy generated AI images (>90MB)
 assets/images/Gemini_Generated_Image_*.png
 
 # OS metadata

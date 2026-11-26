@@ -1,0 +1,162 @@
+/* TrackingPage.css — OWNGO Live Fleet Tracking (Classic CRM UI) */
+
+.tracking-leaflet-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+/* Map Container with guaranteed non-zero height */
+.leaflet-map-wrapper {
+  width: 100%;
+  height: 620px;
+  min-height: 520px;
+  position: relative;
+  background: #080c09;
+  z-index: 1;
+}
+
+[data-theme="light"] .leaflet-map-wrapper {
+  background: #e2e8f0;
+}
+
+/* Ensure Leaflet container fills wrapper */
+.leaflet-map-wrapper .leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  font-family: inherit;
+}
+
+/* Map Top Overlay Pill */
+.tracking-map-pill {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(6, 9, 7, 0.88);
+  backdrop-filter: blur(8px);
+  color: #84d802;
+  border: 1px solid rgba(132, 216, 2, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+[data-theme="light"] .tracking-map-pill {
+  background: rgba(255, 255, 255, 0.95);
+  color: #365d00;
+  border-color: rgba(77, 130, 0, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.tracking-radar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #84d802;
+  animation: radar-pulse 1.6s infinite ease-out;
+}
+
+[data-theme="light"] .tracking-radar-dot {
+  background: #4d8200;
+}
+
+@keyframes radar-pulse {
+  0% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(132, 216, 2, 0.7); }
+  70% { transform: scale(1.15); opacity: 0.8; box-shadow: 0 0 0 8px rgba(132, 216, 2, 0); }
+  100% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(132, 216, 2, 0); }
+}
+
+/* ── Custom Leaflet EV Auto DivIcon Marker ── */
+.leaflet-custom-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-ev-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transform: scale(0.96);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.leaflet-ev-pin:hover,
+.leaflet-ev-pin.is-selected {
+  transform: scale(1.18);
+  z-index: 1000 !important;
+}
+
+.pin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.leaflet-ev-pin.active .pin-badge {
+  background: #060907;
+  color: #84d802;
+  border: 2px solid #84d802;
+}
+
+.leaflet-ev-pin.charging .pin-badge {
+  background: #061120;
+  color: #38bdf8;
+  border: 2px solid #38bdf8;
+}
+
+.leaflet-ev-pin.idle .pin-badge {
+  background: #141716;
+  color: #94a3b8;
+  border: 2px solid #64748b;
+}
+
+.leaflet-ev-pin.maintenance .pin-badge {
+  background: #1c0a0a;
+  color: #f87171;
+  border: 2px solid #ef4444;
+}
+
+.pin-pointer {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  margin-top: -1px;
+}
+
+.leaflet-ev-pin.active .pin-pointer { border-top: 6px solid #84d802; }
+.leaflet-ev-pin.charging .pin-pointer { border-top: 6px solid #38bdf8; }
+.leaflet-ev-pin.idle .pin-pointer { border-top: 6px solid #64748b; }
+.leaflet-ev-pin.maintenance .pin-pointer { border-top: 6px solid #ef4444; }
+
+/* Bottom Fleet Overview & Telemetry Grid */
+.tracking-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .tracking-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}

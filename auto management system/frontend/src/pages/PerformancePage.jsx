@@ -1,0 +1,554 @@
+import { useState, useEffect, useCallback } from 'react';
+import {
+  RiBarChart2Line, RiCalendarEventLine, RiFilterLine, RiUserHeartLine,
+  RiPhoneLine, RiCheckboxCircleLine, RiFolderUserLine, RiFileList2Line,
+  RiGroupLine, RiHistoryLine, RiUserLine, RiArrowRightUpLine,
+  RiPaletteLine, RiCheckDoubleLine, RiMoneyDollarCircleLine, RiWallet3Line
+} from 'react-icons/ri';
+import AppLayout from '../components/AppLayout';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+
+// Months config for filtering
+const MONTHS = [
+  { value: '', label: 'All Months' },
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' }
+];
+
+const PerformancePage = () => {
+  const { user } = useAuth();
+  
+  const [departments, setDepartments] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isDeptHead, setIsDeptHead] = useState(false);
+  const [hasTeamAccess, setHasTeamAccess] = useState(false);
+  const [canViewTeam, setCanViewTeam] = useState(false);
+  const [canSwitchAllDepts, setCanSwitchAllDepts] = useState(false);
+  const [headDeptName, setHeadDeptName] = useState('');
+  const [isDesignDept, setIsDesignDept] = useState(false);
+
+  // Scope: 'team' vs 'own'
+  const [perfScope, setPerfScope] = useState('team');
+
+  // Filter states
+  const [selectedDept, setSelectedDept] = useState('');
+  const [year, setYear] = useState('2026');
+  const [month, setMonth] = useState('');
+  const [day, setDay] = useState('');
+
+  // User role helpers
+  const userRole = user?.role?.level;
+  const isManager = userRole === 'dept_manager';
+  const isRegularUser = userRole === 'user';
+  const isAdmin = ['super_admin', 'org_admin', 'company_admin'].includes(userRole) || user?.isSuperAdmin;
+
+  const fetchPerformance = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedDept) params.set('departmentId', selectedDept);
+      if (perfScope) params.set('scope', perfScope);
+      if (year) params.set('year', year);
+      if (month) params.set('month', month);
+      if (day) params.set('day', day);
+
+      const res = await api.get(`/performance?${params}`);
+      if (res.data.success) {
+        setMembers(res.data.members || []);
+        setActivities(res.data.activities || []);
+        setIsDeptHead(res.data.isDeptHead || false);
+        setHasTeamAccess(res.data.hasTeamAccess || false);
+        setCanViewTeam(res.data.canViewTeam || false);
+        setCanSwitchAllDepts(res.data.canSwitchAllDepts || false);
+        setHeadDeptName(res.data.headDeptName || '');
+        setIsDesignDept(res.data.isDesignDept || false);
+        if (res.data.departments) {
+          setDepartments(res.data.departments);
+        }
+        if (res.data.selectedDepartmentId && !selectedDept) {
+          setSelectedDept(res.data.selectedDepartmentId);
+        }
+        if (res.data.scopeType && res.data.scopeType !== perfScope) {
+          setPerfScope(res.data.scopeType);
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to load performance metrics');
+    }
+    setLoading(false);
+  }, [selectedDept, perfScope, year, month, day]);
+
+  useEffect(() => {
+    fetchPerformance();
+  }, [fetchPerformance]);
+
+  const formatCurrency = (v) => {
+    const n = parseFloat(v) || 0;
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+  };
+
+  // Aggregate totals
+  const totalCalls = members.reduce((sum, m) => sum + (m.stats?.contactedCount || 0), 0);
+  const totalConverted = members.reduce((sum, m) => sum + (m.stats?.convertedCount || 0), 0);
+  const totalAssigned = members.reduce((sum, m) => sum + (m.stats?.totalAssigned || 0), 0);
+  const totalClosedVal = members.reduce((sum, m) => sum + (m.stats?.totalClosedVal || 0), 0);
+  const totalNetProfit = members.reduce((sum, m) => sum + (m.stats?.netProfit || 0), 0);
+  const conversionRate = totalCalls > 0 ? ((totalConverted / totalCalls) * 100).toFixed(1) : '0';
+  const designCompletionRate = totalAssigned > 0 ? ((totalConverted / totalAssigned) * 100).toFixed(1) : '0';
+
+  // Get current active department label
+  const activeDeptLabel = departments.find(d => String(d.id) === String(selectedDept))?.name || 'Department';
+
+  return (
+    <AppLayout>
+      <div className="page-header" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
+              <RiBarChart2Line style={{ color: 'var(--accent)' }} /> 
+              {perfScope === 'team' ? 'Team Performance' : 'My Performance'}
+            </h1>
+            {/* Scope Badge */}
+            {perfScope === 'team' ? (
+              <span className="badge badge-info">
+                <span>👥</span> Team Scope ({headDeptName || activeDeptLabel})
+              </span>
+            ) : (
+              <span className="badge badge-success">
+                <span>👤</span> My Performance Only
+              </span>
+            )}
+
+            {/* Dept Head Badge */}
+            {isDeptHead && (
+              <span className="badge badge-warning">
+                👑 Department Head — {headDeptName}
+              </span>
+            )}
+          </div>
+
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: 6, marginBottom: 0 }}>
+            {perfScope === 'team'
+              ? `Reviewing metrics and conversions across ${headDeptName || activeDeptLabel || 'the department'}.`
+              : `Reviewing only your personal call counts, conversions, and metrics.`
+            }
+          </p>
+        </div>
+
+        {/* Scope Toggle if user has team view permission */}
+        {canViewTeam && (
+          <div style={{
+            display: 'inline-flex',
+            background: 'var(--bg-secondary)',
+            padding: 4,
+            borderRadius: 8,
+            border: '1px solid var(--border)'
+          }}>
+            <button
+              type="button"
+              onClick={() => setPerfScope('team')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: perfScope === 'team' ? 'var(--accent)' : 'transparent',
+                color: perfScope === 'team' ? '#ffffff' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '6px 14px',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+                transition: 'var(--transition)'
+              }}
+            >
+              <span>👥</span> Team Performance
+            </button>
+            <button
+              type="button"
+              onClick={() => setPerfScope('own')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: perfScope === 'own' ? 'var(--accent)' : 'transparent',
+                color: perfScope === 'own' ? '#ffffff' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '6px 14px',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+                transition: 'var(--transition)'
+              }}
+            >
+              <span>👤</span> My Performance Only
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Filter panel */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, background: 'var(--bg-card)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          
+          {/* Department Filter (Only accessible if canSwitchAllDepts, else locked to own dept) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <RiGroupLine style={{ color: 'var(--text-muted)' }} />
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Department:</span>
+            <select
+              value={selectedDept}
+              onChange={e => setSelectedDept(e.target.value)}
+              disabled={!canSwitchAllDepts && departments.length <= 1}
+              title={!canSwitchAllDepts ? 'Department locked to your assigned department' : 'Switch department'}
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '8px 12px',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                cursor: canSwitchAllDepts ? 'pointer' : 'default',
+                opacity: canSwitchAllDepts ? 1 : 0.8
+              }}
+            >
+              {departments.length > 0 ? (
+                departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))
+              ) : (
+                <option value={selectedDept || ''}>{activeDeptLabel || 'No departments'}</option>
+              )}
+            </select>
+            {!canSwitchAllDepts && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                🔒 (Your Dept)
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderLeft: '1px solid var(--border)', paddingLeft: 16 }}>
+            <RiCalendarEventLine style={{ color: 'var(--text-muted)' }} />
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Period:</span>
+            
+            {/* Year selector */}
+            <select
+              value={year}
+              onChange={e => { setYear(e.target.value); setMonth(''); setDay(''); }}
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '8px 12px',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">Today Only</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2027">2027</option>
+            </select>
+
+            {/* Month selector */}
+            {year && (
+              <select
+                value={month}
+                onChange={e => { setMonth(e.target.value); setDay(''); }}
+                style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {MONTHS.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Day selector */}
+            {year && month && (
+              <select
+                value={day}
+                onChange={e => setDay(e.target.value)}
+                style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">All Days</option>
+                {Array.from({ length: 31 }, (_, i) => String(i + 1)).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <button 
+            className="btn btn-sm btn-outline" 
+            onClick={() => { setYear('2026'); setMonth(''); setDay(''); }} 
+            style={{ marginLeft: 'auto' }}
+          >
+            Reset Filters
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div className="spinner" style={{ margin: '0 auto 12px' }} />
+          <div style={{ color: 'var(--text-secondary)' }}>Loading performance data...</div>
+        </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="perf-stat-grid">
+            
+            {/* Card 1: Calls Made OR Stalls Assigned */}
+            <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: 'rgba(59,130,246,0.1)', color: 'rgb(59,130,246)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                {isDesignDept ? <RiPaletteLine /> : <RiPhoneLine />}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isDesignDept 
+                    ? (perfScope === 'team' ? 'Total Designs' : 'My Designs')
+                    : (perfScope === 'team' ? 'Team Calls' : 'My Calls')
+                  }
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                  {totalCalls}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Converted Leads OR Completed Designs */}
+            <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: 'rgba(16,185,129,0.1)', color: 'rgb(16,185,129)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                {isDesignDept ? <RiCheckDoubleLine /> : <RiCheckboxCircleLine />}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isDesignDept 
+                    ? (perfScope === 'team' ? 'Team Completed' : 'My Completed')
+                    : (perfScope === 'team' ? 'Team Converted' : 'My Converted')
+                  }
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                  {totalConverted}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Conversion Rate OR Completion Rate */}
+            <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: 'rgba(139,92,246,0.1)', color: 'rgb(139,92,246)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                <RiUserHeartLine />
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isDesignDept ? 'Completion Rate' : 'Conversion Rate'}
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                  {isDesignDept ? designCompletionRate : conversionRate}%
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Assigned Leads OR Pending Designs */}
+            <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: 'rgba(245,158,11,0.1)', color: 'rgb(245,158,11)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                <RiFolderUserLine />
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isDesignDept 
+                    ? (perfScope === 'team' ? 'Team Assigned' : 'My Assigned')
+                    : (perfScope === 'team' ? 'Team Leads' : 'My Leads')
+                  }
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                  {totalAssigned}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 5: Closed Value (Sales Only) */}
+            {!isDesignDept && (
+              <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: 'rgba(6,182,212,0.1)', color: 'rgb(6,182,212)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                  <RiMoneyDollarCircleLine />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {perfScope === 'team' ? 'Total Closed' : 'My Closed'}
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {formatCurrency(totalClosedVal)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Card 6: Office Profit / Net Profit (Sales Only) */}
+            {!isDesignDept && (
+              <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: 'rgba(236,72,153,0.1)', color: 'rgb(236,72,153)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                  <RiWallet3Line />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {perfScope === 'team' ? 'Team Net Profit' : 'My Net Profit'}
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--success)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {formatCurrency(totalNetProfit)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+            
+            {/* Leaderboard Table — visible for team scope or when user has members to view */}
+            {(perfScope === 'team' || canViewTeam || members.length > 0) && (
+            <div className="card" style={{ padding: 0, overflow: 'hidden', width: '100%' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <RiUserLine style={{ color: 'var(--accent)' }} />
+                  {perfScope === 'team' 
+                    ? (isDeptHead ? `👑 ${headDeptName} — Team Leaderboard` : `${headDeptName || activeDeptLabel} Team Leaderboard`)
+                    : 'My Performance Details'
+                  }
+                </h3>
+                <span style={{ fontSize: '0.75rem', background: 'var(--accent-glow)', color: 'var(--accent)', padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>
+                  {members.length} {perfScope === 'team' ? `member${members.length !== 1 ? 's' : ''}` : 'record'}
+                </span>
+              </div>
+
+              {members.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                  No members found in this department.
+                </div>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="table" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>{isDesignDept ? 'Designer Name' : 'Caller Name'}</th>
+                        <th>Role</th>
+                        <th style={{ textAlign: 'center' }}>{isDesignDept ? 'Designs' : 'Leads'}</th>
+                        {!isDesignDept && <th style={{ textAlign: 'center' }}>Calls Made</th>}
+                        <th style={{ textAlign: 'center' }}>{isDesignDept ? 'Completed' : 'Converted'}</th>
+                        {!isDesignDept && <th style={{ textAlign: 'right' }}>Closed (₹)</th>}
+                        {!isDesignDept && <th style={{ textAlign: 'right' }}>Profit (₹)</th>}
+                        <th>Status Mix</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {members.map(member => {
+                        return (
+                          <tr key={member.id} style={member.isHead ? { background: 'rgba(245,158,11,0.04)', borderLeft: '2px solid rgba(245,158,11,0.4)' } : {}}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 30, height: 30, borderRadius: '50%', background: member.isHead ? 'rgba(245,158,11,0.15)' : 'var(--accent-glow)', color: member.isHead ? '#f59e0b' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                                  {member.isHead ? '👑' : member.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {member.name}
+                                    {member.isHead && (
+                                      <span style={{ fontSize: '0.68rem', background: 'rgba(245,158,11,0.12)', color: '#f59e0b', padding: '1px 6px', borderRadius: 8, fontWeight: 700 }}>HEAD</span>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{member.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{member.role}</span>
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {member.stats?.totalAssigned}
+                            </td>
+                            {!isDesignDept && (
+                              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--accent)' }}>
+                                {member.stats?.contactedCount}
+                              </td>
+                            )}
+                            <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--success)' }}>
+                              {member.stats?.convertedCount}
+                            </td>
+                            {!isDesignDept && (
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {formatCurrency(member.stats?.totalClosedVal)}
+                              </td>
+                            )}
+                            {!isDesignDept && (
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>
+                                {formatCurrency(member.stats?.netProfit)}
+                              </td>
+                            )}
+                            <td>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                {isDesignDept ? (
+                                  <>
+                                    <span className="badge badge-info" title="Pending design orders">{member.stats?.newCount} P</span>
+                                    <span className="badge badge-warning" title="In progress design orders">{member.stats?.inProgressCount} I</span>
+                                    <span className="badge badge-success" title="Completed design orders">{member.stats?.convertedCount} C</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="badge badge-info" title="New leads">{member.stats?.newCount} N</span>
+                                    <span className="badge badge-warning" title="Call Not Picked">{member.stats?.inProgressCount} C</span>
+                                    <span className="badge badge-success" title="Converted">{member.stats?.convertedCount} V</span>
+                                    <span className="badge badge-danger" title="Lost">{member.stats?.lostCount} L</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            )}
+
+
+          </div>
+        </>
+      )}
+    </AppLayout>
+  );
+};
+
+export default PerformancePage;

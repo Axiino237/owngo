@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Environment variables / credentials
+.env
+.env*
+**/.env
+**/.env*
+
+# Deployment / scratch / temp scripts
+*.py
+*.ps1
+backend/find_uuid.js
+backend-nest/
+
+# Uploads or local temp dirs
+uploads/
+**/uploads/
+scratch/

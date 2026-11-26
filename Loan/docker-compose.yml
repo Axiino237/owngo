@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bajaj_loan_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bajaj_loan_db
+    ports:
+      - '5437:5432'
+    volumes:
+      - bajaj_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bajaj_loan_backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: bajaj_loan_db
+      JWT_SECRET: bajaj_loan_secret_key_2026
+      CRM_API_URL: http://host.docker.internal:5050/api/loan-applications/sync
+    ports:
+      - '3001:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bajaj_loan_frontend
+    restart: always
+    ports:
+      - '5173:5173'
+    depends_on:
+      - backend
+
+volumes:
+  bajaj_pgdata:

@@ -1,0 +1,208 @@
+const express = require('express');
+const router = express.Router();
+const { Permission, Role } = require('../models');
+const { protect, adminOnly } = require('../middleware/auth');
+const { checkPermission } = require('../middleware/permission');
+
+router.use(protect);
+
+const MODULE_SCREENS = {
+  dashboard: [
+    'dashboard-home',
+    'dashboard-all',
+    'dashboard-date-filter',
+    'dashboard-user-filter',
+    'leads-widget',
+    'calls-widget',
+    'interested-leads-widget',
+    'projects-widget',
+    'pending-projects-widget',
+    'completed-projects-widget',
+    'quote-sent-count-card',
+    'quote-sent-count-card-team',
+    'quote-sent-value-card',
+    'quote-sent-value-card-team',
+    'total-profit-card',
+    'total-value-card',
+    'overall-balance-card',
+    'monthly-profit-card',
+    'deductions-card',
+    'net-profit-card',
+    'profit-trend-chart',
+    'recent-leads-list',
+    'recent-projects-list',
+    'org-overview',
+    'system-overview',
+    'pending-designs-widget',
+    'completed-designs-widget',
+    'change-designs-widget',
+    'total-designs-widget',
+    'top-performers-widget',
+    'upcoming-expos-widget'
+  ],
+  uam: [
+    'users-list',
+    'user-create',
+    'user-edit',
+    'audit-logs-list',
+    'status-master',
+    'staff-summary',
+    'staff-summary-dept',
+    'staff-summary-all'
+  ],
+  autos: [
+    'autos-list',
+    'auto-create',
+    'auto-edit',
+    'auto-delete'
+  ],
+  drivers: [
+    'drivers-list',
+    'driver-create',
+    'driver-edit',
+    'driver-delete'
+  ],
+  tracking: [
+    'tracking-view'
+  ],
+  jobs: [
+    'job-requests-list',
+    'job-request-create',
+    'job-request-edit',
+    'job-request-delete'
+  ],
+  partners: [
+    'partners-list',
+    'partner-create',
+    'partner-edit',
+    'partner-delete'
+  ],
+  finance: [
+    'loan-applications-list',
+    'loan-application-view',
+    'loan-application-edit',
+    'loan-application-delete'
+  ],
+  tools: [
+    'link-generator',
+    'saved-links'
+  ],
+  roles: ['roles-list', 'role-create', 'role-edit'],
+  permissions: ['permissions-list', 'permission-edit'],
+  organizations: ['organizations-list', 'organization-create', 'organization-edit'],
+  companies: ['companies-list', 'company-create', 'company-edit'],
+  departments: ['departments-list', 'department-create', 'department-edit'],
+  leads: ['leads-list', 'leads-all', 'lead-create', 'lead-edit', 'lead-delete', 'lead-edit-upload-date'],
+  quotations: ['quotations-list', 'quotation-create', 'quotation-export'],
+  performance: ['performance-view', 'performance-team', 'performance-all-departments'],
+  closed_sales: [
+    'closed-sales-list',
+    'closed-sales-all',
+    'closed-sales-filters',
+    'closed-sales-name-filter',
+    'closed-sales-sort',
+    // Cards
+    'closed-sales-card-base-value',
+    'closed-sales-card-gst',
+    'closed-sales-card-tds',
+    'closed-sales-card-total-value',
+    'closed-sales-card-paid',
+    'closed-sales-card-balance',
+    'closed-sales-card-vendor',
+    // Columns
+    'closed-sales-value',
+    'closed-sales-gst-view',
+    'closed-sales-tds-view',
+    'closed-sales-total-value',
+    'closed-sales-paid',
+    'closed-sales-balance',
+    'closed-sales-vendor-payout',
+    // Actions
+    'closed-sales-tax-calc'
+  ],
+  design: ['design-list', 'my-projects-list', 'completed-models-list'],
+  attendance: [
+    'attendance-list',
+    'attendance-my-corrections',
+    'attendance-correction-approvals',
+    'attendance-payroll',
+    'attendance-team',
+    'attendance-all-departments',
+    'attendance-holidays'
+  ],
+  chat: ['chat-room', 'chat-workspaces']
+};
+
+// @desc    Get permissions for a role
+// @route   GET /api/permissions/role/:roleId
+router.get('/role/:roleId', checkPermission('permissions', 'permissions-list', 'canView'), async (req, res) => {
+  try {
+    const role = await Role.findByPk(req.params.roleId);
+    if (!role) return res.status(404).json({ success: false, message: 'Role not found' });
+
+    const permissions = await Permission.findAll({ where: { roleId: req.params.roleId } });
+
+    // Build a complete matrix with defaults for missing combos
+    const matrix = {};
+    for (const [module, screens] of Object.entries(MODULE_SCREENS)) {
+      matrix[module] = {};
+      for (const screen of screens) {
+        const existing = permissions.find(p => p.module === module && p.screen === screen);
+        matrix[module][screen] = existing
+          ? { id: existing.id, canView: existing.canView, canCreate: existing.canCreate, canEdit: existing.canEdit, canDelete: existing.canDelete }
+          : { canView: false, canCreate: false, canEdit: false, canDelete: false };
+      }
+    }
+
+    res.json({ success: true, role, permissions, matrix, moduleScreens: MODULE_SCREENS });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Save/Update permissions for a role
+// @route   PUT /api/permissions/role/:roleId
+router.put('/role/:roleId', adminOnly, checkPermission('permissions', 'permission-edit', 'canEdit'), async (req, res) => {
+  try {
+    const { permissions } = req.body;
+
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ success: false, message: 'permissions must be an array' });
+    }
+
+    const role = await Role.findByPk(req.params.roleId);
+    if (!role) return res.status(404).json({ success: false, message: 'Role not found' });
+
+    // Bulk upsert using transaction or simple map-promises for simplicity in Postgres
+    for (const p of permissions) {
+      await Permission.upsert({
+        roleId: req.params.roleId,
+        module: p.module,
+        screen: p.screen,
+        canView: !!p.canView,
+        canCreate: !!p.canCreate,
+        canEdit: !!p.canEdit,
+        canDelete: !!p.canDelete
+      }, {
+        conflictFields: ['roleId', 'module', 'screen']
+      });
+    }
+
+    const updatedPermissions = await Permission.findAll({ where: { roleId: req.params.roleId } });
+
+    const { logAction } = require('../utils/auditLogger');
+    await logAction(req, 'UPDATE', 'permissions', role.id, role.name, `Updated UAM permissions for role "${role.name}"`);
+
+    res.json({ success: true, message: 'Permissions saved successfully', permissions: updatedPermissions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Get module-screen map
+// @route   GET /api/permissions/modules
+router.get('/modules', async (req, res) => {
+  res.json({ success: true, moduleScreens: MODULE_SCREENS });
+});
+
+module.exports = router;

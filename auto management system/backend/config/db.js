@@ -1,0 +1,142 @@
+const { Sequelize } = require('sequelize');
+
+// Parse DATABASE_URL manually to avoid connection string overrides
+const connectionString = process.env.DATABASE_URL;
+const regex = /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/;
+const match = connectionString.match(regex);
+
+if (!match) {
+  console.error("Invalid DATABASE_URL format");
+  process.exit(1);
+}
+
+const [_, username, password, host, port, database] = match;
+
+const decodedPassword = decodeURIComponent(password);
+
+const isLocal = ['localhost', '127.0.0.1', 'postgres', 'dental_crm_postgres'].includes(host);
+
+const sequelize = new Sequelize(database, username, decodedPassword, {
+  host: host,
+  port: port,
+  dialect: 'postgres',
+  dialectOptions: isLocal ? {} : {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false // This disables SSL verification check
+    }
+  },
+  logging: false,
+  pool: {
+    max: 15,       // ✅ More connections for parallel queries
+    min: 2,        // ✅ Keep 2 connections warm (faster first response)
+    acquire: 30000,
+    idle: 10000,
+    evict: 5000    // ✅ Clean up idle connections faster
+  }
+});
+
+const connectDB = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ PostgreSQL Connected (Supabase)');
+    
+    // Add new ENUM values to Postgres if they exist to prevent sync failures
+    try {
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'performance'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'performance-view'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'performance-team'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'performance-all-departments'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'net-profit-card'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'audit-logs-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'system-overview'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'closed_sales'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-all'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-value'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-paid'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-balance'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-vendor-payout'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'closed-sales-tax-calc'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'pending-designs-widget'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'completed-designs-widget'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'change-designs-widget'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'total-designs-widget'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'design'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'design-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'my-projects-list'");
+      await sequelize.query("ALTER TABLE crm_design_orders ADD COLUMN IF NOT EXISTS \"endTime\" TIMESTAMP WITH TIME ZONE");
+      await sequelize.query("ALTER TABLE crm_design_orders ADD COLUMN IF NOT EXISTS \"completedModelUrl\" TEXT");
+      await sequelize.query("ALTER TABLE crm_design_orders ADD COLUMN IF NOT EXISTS \"completedAt\" TIMESTAMP WITH TIME ZONE");
+      await sequelize.query("ALTER TABLE crm_design_orders ADD COLUMN IF NOT EXISTS \"requirementDocUrl\" TEXT");
+      await sequelize.query("ALTER TABLE crm_design_orders ADD COLUMN IF NOT EXISTS \"requirementDocName\" TEXT");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"publicKey\" TEXT");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"paidLeaves\" INTEGER DEFAULT 12");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"casualLeaves\" INTEGER DEFAULT 10");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"sickLeaves\" INTEGER DEFAULT 8");
+      await sequelize.query("ALTER TYPE enum_crm_leave_requests_leaveType ADD VALUE IF NOT EXISTS 'paid'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'completed-models-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'attendance'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'attendance-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'chat'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'chat-room'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'chat-workspaces'");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"baseSalary\" NUMERIC(12, 2) DEFAULT 0");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"monthlyLeaveQuota\" INTEGER DEFAULT 1");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"managerId\" UUID");
+      await sequelize.query("ALTER TABLE crm_users ADD COLUMN IF NOT EXISTS \"attendanceRequired\" BOOLEAN DEFAULT true");
+      await sequelize.query("ALTER TABLE crm_leave_requests ADD COLUMN IF NOT EXISTS \"isLossOfPay\" BOOLEAN DEFAULT FALSE");
+      await sequelize.query("ALTER TABLE crm_departments ADD COLUMN IF NOT EXISTS \"hierarchyLayers\" JSONB DEFAULT '[]'::jsonb");
+      await sequelize.query("ALTER TABLE crm_departments ADD COLUMN IF NOT EXISTS \"headId\" UUID");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'not_interested'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'not_answering'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'number_busy'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'not_participating'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'requirement_received'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'call_back'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'follow_ups'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'design_sent'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'quote_sent'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'sales_closed'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'shell_scheme'");
+      await sequelize.query("ALTER TYPE enum_crm_leads_status ADD VALUE IF NOT EXISTS 'shell scheme'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'staff-summary'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'dashboard-all'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'dashboard-user-filter'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'top-performers-widget'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'upcoming-expos-widget'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'quote-sent-count-card'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'quote-sent-count-card-team'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'quote-sent-value-card'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'quote-sent-value-card-team'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'leads-all'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'attendance-my-corrections'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'attendance-correction-approvals'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'attendance-payroll'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'attendance-holidays'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'autos'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'autos-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'auto-create'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'auto-edit'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'auto-delete'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_module ADD VALUE IF NOT EXISTS 'drivers'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'drivers-list'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'driver-create'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'driver-edit'");
+      await sequelize.query("ALTER TYPE enum_crm_permissions_screen ADD VALUE IF NOT EXISTS 'driver-delete'");
+      await sequelize.query('ALTER TABLE crm_leads ADD COLUMN IF NOT EXISTS "expoDate" DATE');
+      await sequelize.query('ALTER TABLE crm_leads ADD COLUMN IF NOT EXISTS "productionDate" DATE');
+      await sequelize.query('ALTER TABLE crm_leads ADD COLUMN IF NOT EXISTS "expoId" UUID');
+    } catch (err) {
+      // Silently ignore if types do not exist yet (will be created by sync)
+    }
+
+    await sequelize.sync();
+    console.log('✅ Database tables synced');
+  } catch (error) {
+    console.error('❌ PostgreSQL Connection Error:', error.message);
+    process.exit(1);
+  }
+};
+
+module.exports = { sequelize, connectDB };

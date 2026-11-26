@@ -1,0 +1,138 @@
+// Central model registry + associations
+const User = require('./User');
+const Role = require('./Role');
+const Permission = require('./Permission');
+const Organization = require('./Organization');
+const Company = require('./Company');
+const Department = require('./Department');
+const Lead = require('./Lead');
+const Project = require('./Project');
+const DesignOrder = require('./DesignOrder');
+const AuditLog = require('./AuditLog');
+const Attendance = require('./Attendance');
+const LeaveRequest = require('./LeaveRequest');
+const Holiday = require('./Holiday');
+const ChatServer = require('./ChatServer');
+const ChatMessage = require('./ChatMessage');
+const AttendanceRegularization = require('./AttendanceRegularization');
+const PushSubscription = require('./PushSubscription');
+const Expo = require('./Expo');
+const AutoVehicle = require('./AutoVehicle');
+const Driver = require('./Driver');
+const LeadStatus = require('./LeadStatus');
+const JobRequest = require('./JobRequest');
+const JobRequestStatus = require('./JobRequestStatus');
+const LoanApplication = require('./LoanApplication');
+const CampaignLink = require('./CampaignLink');
+
+// ---- Associations ----
+
+// User manager self-association
+User.belongsTo(User, { foreignKey: 'managerId', as: 'manager', constraints: false });
+User.hasMany(User, { foreignKey: 'managerId', as: 'reportees', constraints: false });
+
+// Role belongs to Organization / Company (scope)
+Role.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+Role.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
+
+// User belongs to Role, Org, Company, Department
+User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+User.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+User.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
+User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
+
+// Permission belongs to Role
+Permission.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+Role.hasMany(Permission, { foreignKey: 'roleId', as: 'permissions' });
+
+// Company belongs to Organization
+Company.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+Organization.hasMany(Company, { foreignKey: 'organizationId', as: 'companies' });
+
+// Department belongs to Company + Organization
+Department.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
+Department.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+Department.belongsTo(User, { foreignKey: 'headId', as: 'head', constraints: false });
+User.hasMany(Department, { foreignKey: 'headId', as: 'headedDepartments', constraints: false });
+Company.hasMany(Department, { foreignKey: 'companyId', as: 'departments' });
+Department.hasMany(User, { foreignKey: 'departmentId', as: 'members' });
+
+// Lead associations
+Lead.belongsTo(User, { foreignKey: 'assignedTo', as: 'assignee', constraints: false });
+Lead.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+Lead.belongsTo(Expo, { foreignKey: 'expoId', as: 'expoMaster', constraints: false });
+Expo.hasMany(Lead, { foreignKey: 'expoId', as: 'leads', constraints: false });
+Expo.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+
+// DesignOrder associations
+DesignOrder.belongsTo(Lead, { foreignKey: 'leadId', as: 'lead', constraints: false });
+DesignOrder.belongsTo(User, { foreignKey: 'submittedBy', as: 'submitter', constraints: false });
+DesignOrder.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+DesignOrder.belongsTo(User, { foreignKey: 'assignedDesignerId', as: 'designer', constraints: false });
+
+// AuditLog associations
+AuditLog.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
+User.hasMany(AuditLog, { foreignKey: 'userId', as: 'auditLogs' });
+
+// Attendance associations
+Attendance.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
+User.hasMany(Attendance, { foreignKey: 'userId', as: 'attendances' });
+Attendance.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+
+// LeaveRequest associations
+LeaveRequest.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
+User.hasMany(LeaveRequest, { foreignKey: 'userId', as: 'leaveRequests' });
+LeaveRequest.belongsTo(User, { foreignKey: 'approvedBy', as: 'approver', constraints: false });
+
+// AttendanceRegularization associations
+AttendanceRegularization.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
+AttendanceRegularization.belongsTo(User, { foreignKey: 'approvedBy', as: 'approver', constraints: false });
+AttendanceRegularization.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+User.hasMany(AttendanceRegularization, { foreignKey: 'userId', as: 'regularizations' });
+
+// Holiday associations
+Holiday.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+
+// ChatServer and ChatMessage associations
+ChatServer.hasMany(Company, { foreignKey: 'chatServerId', as: 'companies' });
+Company.belongsTo(ChatServer, { foreignKey: 'chatServerId', as: 'chatServer' });
+ChatMessage.belongsTo(User, { foreignKey: 'senderId', as: 'sender', constraints: false });
+ChatMessage.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver', constraints: false });
+ChatMessage.belongsTo(ChatServer, { foreignKey: 'chatServerId', constraints: false });
+ChatMessage.belongsTo(Company, { foreignKey: 'companyId', constraints: false });
+
+// PushSubscription associations
+PushSubscription.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'CASCADE' });
+User.hasMany(PushSubscription, { foreignKey: 'userId', as: 'pushSubscriptions', onDelete: 'CASCADE' });
+
+// AutoVehicle & Driver associations
+AutoVehicle.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+AutoVehicle.belongsTo(Company, { foreignKey: 'companyId', as: 'company', constraints: false });
+AutoVehicle.belongsTo(Driver, { foreignKey: 'assignedDriverId', as: 'driver', constraints: false });
+Driver.hasOne(AutoVehicle, { foreignKey: 'assignedDriverId', as: 'vehicle', constraints: false });
+
+Driver.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+Driver.belongsTo(Company, { foreignKey: 'companyId', as: 'company', constraints: false });
+Driver.belongsTo(AutoVehicle, { foreignKey: 'assignedAutoId', as: 'assignedAuto', constraints: false });
+
+// LeadStatus associations
+LeadStatus.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+Organization.hasMany(LeadStatus, { foreignKey: 'organizationId', as: 'leadStatuses', constraints: false });
+
+// JobRequest associations
+JobRequest.belongsTo(User, { foreignKey: 'assignedTo', as: 'assignee', constraints: false });
+JobRequest.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+
+// JobRequestStatus associations
+JobRequestStatus.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+Organization.hasMany(JobRequestStatus, { foreignKey: 'organizationId', as: 'jobRequestStatuses', constraints: false });
+
+// LoanApplication associations
+LoanApplication.belongsTo(Lead, { foreignKey: 'leadId', as: 'lead', constraints: false });
+Lead.hasOne(LoanApplication, { foreignKey: 'leadId', as: 'loanApplication', constraints: false });
+LoanApplication.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization', constraints: false });
+LoanApplication.belongsTo(Company, { foreignKey: 'companyId', as: 'company', constraints: false });
+
+module.exports = { 
+  User, Role, Permission, Organization, Company, Department, Lead, Project, DesignOrder, AuditLog, Attendance, LeaveRequest, AttendanceRegularization, Holiday, ChatServer, ChatMessage, PushSubscription, Expo, AutoVehicle, Driver, LeadStatus, JobRequest, JobRequestStatus, LoanApplication, CampaignLink 
+};
