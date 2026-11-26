@@ -257,34 +257,35 @@ const LeaderboardPage = () => {
                 {/* Metrics Box */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 8,
-                  padding: '12px 14px',
+                  gridTemplateColumns: '0.9fr 1.3fr 1.3fr',
+                  gap: 6,
+                  padding: '10px 10px',
                   background: 'var(--bg-secondary)',
                   borderRadius: 12,
-                  border: '1px solid var(--border)'
+                  border: '1px solid var(--border)',
+                  overflow: 'hidden'
                 }}>
-                  <div>
-                    <span style={{ fontSize: '0.625rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: '0.625rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       Closed Deals
                     </span>
-                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--success)' }}>
-                      {emp.salesCount} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-secondary)' }}>deals</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--success)', whiteSpace: 'nowrap' }}>
+                      {emp.salesCount} <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>deals</span>
                     </span>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '0.625rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: '0.625rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       Avg Deal Value
                     </span>
-                    <span style={{ fontSize: '0.98rem', fontWeight: 800, color: '#a855f7', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 800, color: '#a855f7', whiteSpace: 'nowrap' }}>
                       {formatCurrency(emp.avgDealValue)}
                     </span>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '0.625rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: '0.625rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       Total Revenue
                     </span>
-                    <span style={{ fontSize: '0.98rem', fontWeight: 800, color: '#38bdf8', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 800, color: '#38bdf8', whiteSpace: 'nowrap' }}>
                       {formatCurrency(emp.totalRevenue)}
                     </span>
                   </div>

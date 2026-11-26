@@ -61,23 +61,30 @@ router.post('/sync', async (req, res) => {
     }
 
     if (!loanApp) {
-      loanApp = await LoanApplication.create({
-        applicationId,
-        applicantFullName: fullName,
-        mobileNumber: mobile,
-        panNumber: pan,
-        status: status || 'NEW',
-        eligibility: eligibility || 'PENDING',
-        vehicleModel: model,
-        onRoadPrice: price,
-        monthlyIncome: income,
-        city,
-        state,
-        underwriterName: reviewerName,
-        completedAt: completedAt ? new Date(completedAt) : null,
-        formData
-      });
-    } else {
+      try {
+        loanApp = await LoanApplication.create({
+          applicationId,
+          applicantFullName: fullName,
+          mobileNumber: mobile,
+          panNumber: pan,
+          status: status || 'NEW',
+          eligibility: eligibility || 'PENDING',
+          vehicleModel: model,
+          onRoadPrice: price,
+          monthlyIncome: income,
+          city,
+          state,
+          underwriterName: reviewerName,
+          completedAt: completedAt ? new Date(completedAt) : null,
+          formData
+        });
+      } catch (insertErr) {
+        // Handled concurrent webhook delivery
+        loanApp = await LoanApplication.findOne({ where: { applicationId } });
+      }
+    }
+
+    if (loanApp) {
       loanApp.applicantFullName = fullName;
       loanApp.mobileNumber = mobile;
       loanApp.panNumber = pan;
