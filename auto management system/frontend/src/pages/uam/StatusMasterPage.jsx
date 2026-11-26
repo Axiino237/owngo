@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   RiSettings4Line, RiAddLine, RiEditLine, RiDeleteBinLine,
   RiRefreshLine, RiCloseLine, RiCheckLine, RiBuilding2Line,
-  RiSteering2Line, RiPaletteLine, RiShieldStarLine
+  RiSteering2Line, RiPaletteLine, RiShieldStarLine, RiLockLine
 } from 'react-icons/ri';
 import AppLayout from '../../components/AppLayout';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -95,15 +95,24 @@ const StatusModal = ({ isOpen, onClose, onSaved, statusItem, endpoint, title }) 
 
         <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
           <div className="form-group" style={{ marginBottom: 16 }}>
-            <label className="form-label" style={{ fontWeight: 600 }}>Status Name *</label>
+            <label className="form-label" style={{ fontWeight: 600 }}>
+              Status Name * {statusItem?.isSystem && <span style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 500 }}>(🔒 Core Lifecycle — Locked)</span>}
+            </label>
             <input
               type="text"
               className="form-control"
               placeholder="e.g. Requirement Received, Interview Scheduled"
               value={name}
               onChange={e => setName(e.target.value)}
+              readOnly={Boolean(statusItem?.isSystem)}
+              style={statusItem?.isSystem ? { opacity: 0.7, cursor: 'not-allowed', background: 'var(--bg-secondary)' } : {}}
               required
             />
+            {statusItem?.isSystem && (
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
+                System-protected status tied to core business logic. You can customize its color and order below.
+              </small>
+            )}
           </div>
 
           {/* Color Picker & Presets */}
@@ -456,7 +465,7 @@ const StatusMasterPage = () => {
 
                         {/* Actions */}
                         <td style={{ textAlign: 'right', paddingRight: 20 }}>
-                          <div style={{ display: 'inline-flex', gap: 8 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             <button
                               className="btn btn-icon btn-sm"
                               title="Edit Status"
@@ -464,13 +473,32 @@ const StatusMasterPage = () => {
                             >
                               <RiEditLine />
                             </button>
-                            <button
-                              className="btn btn-icon btn-sm btn-danger-icon"
-                              title="Delete / Deactivate Status"
-                              onClick={() => setDeleteConfirm({ open: true, item })}
-                            >
-                              <RiDeleteBinLine />
-                            </button>
+                            {item.isSystem ? (
+                              <span
+                                title="Core System Lifecycle Status (Cannot be deleted or deactivated)"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '4px 8px',
+                                  borderRadius: 6,
+                                  background: 'rgba(245, 158, 11, 0.1)',
+                                  color: '#f59e0b',
+                                  fontSize: '0.725rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                <RiLockLine /> Locked
+                              </span>
+                            ) : (
+                              <button
+                                className="btn btn-icon btn-sm btn-danger-icon"
+                                title="Delete / Deactivate Status"
+                                onClick={() => setDeleteConfirm({ open: true, item })}
+                              >
+                                <RiDeleteBinLine />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

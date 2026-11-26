@@ -35,6 +35,10 @@ const JobRequestStatus = sequelize.define('JobRequestStatus', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  isSystem: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
   organizationId: {
     type: DataTypes.UUID,
     allowNull: true

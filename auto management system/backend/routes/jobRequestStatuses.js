@@ -142,13 +142,24 @@ router.put('/:id', async (req, res) => {
 
     const { name, color, badgeClass, order, isActive, isDefault } = req.body;
     const updates = {};
-    if (name !== undefined && name.trim()) {
-      updates.name = name.trim();
+
+    if (statusItem.isSystem) {
+      // Core system statuses cannot have their name, key, or active status modified
+      if (isActive === false) {
+        return res.status(400).json({ success: false, message: 'Core recruitment lifecycle statuses cannot be deactivated' });
+      }
+      if (color !== undefined) updates.color = color;
+      if (badgeClass !== undefined) updates.badgeClass = badgeClass;
+      if (order !== undefined) updates.order = parseInt(order, 10);
+    } else {
+      if (name !== undefined && name.trim()) {
+        updates.name = name.trim();
+      }
+      if (color !== undefined) updates.color = color;
+      if (badgeClass !== undefined) updates.badgeClass = badgeClass;
+      if (order !== undefined) updates.order = parseInt(order, 10);
+      if (isActive !== undefined) updates.isActive = Boolean(isActive);
     }
-    if (color !== undefined) updates.color = color;
-    if (badgeClass !== undefined) updates.badgeClass = badgeClass;
-    if (order !== undefined) updates.order = parseInt(order, 10);
-    if (isActive !== undefined) updates.isActive = Boolean(isActive);
     if (isDefault !== undefined && isDefault) {
       updates.isDefault = true;
       await JobRequestStatus.update({ isDefault: false }, { where: { id: { [Op.ne]: statusItem.id } } });
@@ -176,6 +187,10 @@ router.delete('/:id', async (req, res) => {
     const statusItem = await JobRequestStatus.findByPk(req.params.id);
     if (!statusItem) {
       return res.status(404).json({ success: false, message: 'Status not found' });
+    }
+
+    if (statusItem.isSystem) {
+      return res.status(403).json({ success: false, message: 'Core recruitment lifecycle statuses cannot be deleted' });
     }
 
     const count = await JobRequest.count({

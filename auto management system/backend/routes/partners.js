@@ -14,7 +14,8 @@ router.get('/', protect, checkPermission('partners', 'partners-list', 'canView')
     const where = {
       status: {
         [Op.in]: ['Invested', 'INVESTED', 'invested']
-      }
+      },
+      leadType: 'partner'
     };
 
     if (search && search.trim()) {
@@ -90,7 +91,8 @@ router.get('/', protect, checkPermission('partners', 'partners-list', 'canView')
 router.get('/stats', protect, checkPermission('partners', 'partners-list', 'canView'), async (req, res) => {
   try {
     const where = {
-      status: { [Op.in]: ['Invested', 'INVESTED', 'invested'] }
+      status: { [Op.in]: ['Invested', 'INVESTED', 'invested'] },
+      leadType: 'partner'
     };
 
     const partners = await Lead.findAll({ where });

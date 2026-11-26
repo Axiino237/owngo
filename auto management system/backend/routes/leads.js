@@ -927,8 +927,8 @@ router.put('/:id', async (req, res, next) => {
       let resolvedStatus = status === 'sales_closed' ? 'converted' : status;
       updates.status = resolvedStatus;
 
-      // When lead is converted, check if eligible for Fleet Partner via Loan App
-      if (resolvedStatus === 'converted' || resolvedStatus === 'Invested') {
+      // When lead is converted, check if eligible for Fleet Partner via Loan App (Strictly for Partner Leads)
+      if (lead.leadType === 'partner' && (resolvedStatus === 'converted' || resolvedStatus === 'Invested')) {
         const cleanDigits = (p) => {
           if (!p) return '';
           const d = String(p).replace(/\D/g, '');
@@ -938,13 +938,19 @@ router.put('/:id', async (req, res, next) => {
         if (targetDigits.length >= 10) {
           try {
             const allLoanApps = await LoanApplication.findAll();
-            const loanApp = allLoanApps.find(app => cleanDigits(app.mobileNumber) === targetDigits);
+            const loanApp = allLoanApps.find(app => cleanDigits(app.mobileNumber) === targetDigits || app.leadId === lead.id);
             if (loanApp && String(loanApp.eligibility).toUpperCase() === 'YES') {
               updates.status = 'Invested';
-              updates.autosCount = lead.autosCount || 1;
+              const autos = lead.autosCount || 1;
+              updates.autosCount = autos;
+              updates.value = autos * 100000;
+              updates.totalValue = autos * 100000;
               updates.cibilScore = lead.cibilScore || '750+ (Loan Verified)';
               loanApp.leadId = lead.id;
               await loanApp.save();
+            } else if (resolvedStatus === 'Invested') {
+              // Loan not approved yet; keep in pipeline as converted until loan eligibility is YES
+              updates.status = 'converted';
             }
           } catch (loanErr) {
             console.warn('Loan eligibility check on lead conversion:', loanErr.message);

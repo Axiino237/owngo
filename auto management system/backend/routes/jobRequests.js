@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
-const { JobRequest, JobRequestStatus, User, Organization, Lead, LoanApplication } = require('../models');
+const { JobRequest, JobRequestStatus, User, Organization } = require('../models');
 const { protect } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/db');
@@ -382,70 +382,6 @@ router.put('/:id', async (req, res) => {
 
     const previousStatus = candidate.status;
     await candidate.update(updates);
-
-    // FLEET PARTNER PROMOTION / DEMOTION LOGIC:
-    // Only promote when candidate status becomes 'converted' AND loan eligibility is 'YES'
-    const newStatusLower = (updates.status || '').toLowerCase();
-    const prevStatusLower = (previousStatus || '').toLowerCase();
-
-    if (newStatusLower === 'converted') {
-      const candDigits = cleanPhone(candidate.phone);
-      if (candDigits.length >= 10) {
-        const allLoanApps = await LoanApplication.findAll();
-        const loanApp = allLoanApps.find(app => cleanPhone(app.mobileNumber) === candDigits);
-        const isEligible = loanApp && String(loanApp.eligibility).toUpperCase() === 'YES';
-
-        if (isEligible) {
-          const allLeads = await Lead.findAll();
-          let lead = allLeads.find(l => cleanPhone(l.phone) === candDigits);
-          if (lead) {
-            lead.status = 'Invested';
-            lead.autosCount = lead.autosCount || 1;
-            lead.value = (lead.autosCount || 1) * 100000;
-            lead.totalValue = (lead.autosCount || 1) * 100000;
-            if (candidate.source) lead.source = candidate.source;
-            if (candidate.sourceLink) lead.sourceLink = candidate.sourceLink;
-            lead.cibilScore = lead.cibilScore || '750+ (Loan Verified)';
-            if (!lead.notes && loanApp) {
-              lead.notes = `Converted from Job Request. Loan Approved: ${loanApp.vehicleModel || 'Bajaj EV Auto'} (${loanApp.applicationId})`;
-            }
-            await lead.save();
-          } else {
-            const autos = 1;
-            lead = await Lead.create({
-              name: candidate.name,
-              phone: candidate.phone,
-              email: candidate.email || null,
-              city: candidate.city || (loanApp ? loanApp.city : 'Chennai') || 'Chennai',
-              status: 'Invested',
-              source: candidate.source || 'Direct Website',
-              sourceLink: candidate.sourceLink || null,
-              leadType: 'partner',
-              autosCount: autos,
-              value: autos * 100000,
-              totalValue: autos * 100000,
-              cibilScore: '750+ (Loan Verified)',
-              notes: `Converted from EV Pilot candidate. Loan Approved: ${loanApp ? loanApp.applicationId : ''}`
-            });
-          }
-          if (loanApp) {
-            loanApp.leadId = lead.id;
-            await loanApp.save();
-          }
-        }
-      }
-    } else if (prevStatusLower === 'converted' && newStatusLower && newStatusLower !== 'converted') {
-      // Revert if candidate was demoted from converted to another status (e.g. screening, rejected)
-      const candDigits = cleanPhone(candidate.phone);
-      if (candDigits.length >= 10) {
-        const allLeads = await Lead.findAll();
-        const lead = allLeads.find(l => cleanPhone(l.phone) === candDigits);
-        if (lead && lead.status === 'Invested' && (lead.source?.includes('Job Request') || lead.leadType === 'partner')) {
-          lead.status = 'new';
-          await lead.save();
-        }
-      }
-    }
 
     const updatedCandidate = await JobRequest.findByPk(candidate.id, {
       include: [{ model: User, as: 'assignee', attributes: ['id', 'name', 'email'] }]

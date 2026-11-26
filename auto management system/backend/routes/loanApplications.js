@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
-const { LoanApplication, Lead, JobRequest, Organization, Company, sequelize } = require('../models');
+const { LoanApplication, Lead, Organization, Company, sequelize } = require('../models');
 const { protect } = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permission');
 
@@ -101,80 +101,41 @@ router.post('/sync', async (req, res) => {
       await loanApp.save();
     }
 
-    // MATCHING & INVESTED STATUS LOGIC:
-    // Only promote to Fleet Partner ('Invested') IF the candidate or lead is ALREADY confirmed/converted!
-    // If candidate is still in screening/new/pending, loan eligibility is recorded but candidate is not promoted yet.
+    // MATCHING & INVESTED STATUS LOGIC (FLEET PARTNERS ONLY):
+    // Only promote to Fleet Partner ('Invested') IF the partner lead is ALREADY converted!
+    // EV Pilot job requests have NO loan connection and will never be touched here.
     const isEligible = String(loanApp.eligibility).toUpperCase() === 'YES';
     let matchedLead = null;
 
-    if (isEligible) {
-      const targetPhoneDigits = cleanPhone(mobile);
-      if (targetPhoneDigits.length >= 10) {
-        // Find existing leads
-        const allLeads = await Lead.findAll();
-        matchedLead = allLeads.find(l => {
-          const lDigits = cleanPhone(l.phone);
-          return lDigits && lDigits === targetPhoneDigits;
-        });
+    const targetPhoneDigits = cleanPhone(mobile);
+    if (targetPhoneDigits.length >= 10) {
+      // Find matching partner lead
+      const allLeads = await Lead.findAll({ where: { leadType: 'partner' } });
+      matchedLead = allLeads.find(l => {
+        const lDigits = cleanPhone(l.phone);
+        return lDigits && lDigits === targetPhoneDigits;
+      });
 
-        // Also check JobRequest candidates
-        const allJobRequests = await JobRequest.findAll();
-        const matchedJob = allJobRequests.find(j => {
-          const jDigits = cleanPhone(j.phone);
-          return jDigits && jDigits === targetPhoneDigits;
-        });
+      if (matchedLead) {
+        loanApp.leadId = matchedLead.id;
+        await loanApp.save();
 
-        const isJobConverted = matchedJob && (matchedJob.status || '').toLowerCase() === 'converted';
-        const isLeadConverted = matchedLead && ['converted', 'invested'].includes((matchedLead.status || '').toLowerCase());
+        if (isEligible) {
+          matchedLead.cibilScore = matchedLead.cibilScore || '750+ (Loan Verified)';
+          const isLeadConverted = ['converted', 'invested'].includes((matchedLead.status || '').toLowerCase());
 
-        if (isJobConverted || isLeadConverted) {
-          const autoCount = matchedLead?.autosCount || matchedJob?.autosCount || 1;
-          const capitalVal = autoCount * 100000;
-          const origSource = (matchedJob && matchedJob.source) ? matchedJob.source : ((matchedLead && matchedLead.source) ? matchedLead.source : 'Direct Website');
-          const origSourceLink = (matchedJob && matchedJob.sourceLink) ? matchedJob.sourceLink : ((matchedLead && matchedLead.sourceLink) ? matchedLead.sourceLink : null);
-
-          if (matchedLead) {
+          if (isLeadConverted) {
+            const autoCount = matchedLead.autosCount || 1;
+            const capitalVal = autoCount * 100000;
             matchedLead.status = 'Invested';
             matchedLead.autosCount = autoCount;
             matchedLead.value = capitalVal;
             matchedLead.totalValue = capitalVal;
-            if (origSource && origSource !== 'Direct Website') matchedLead.source = origSource;
-            if (origSourceLink) matchedLead.sourceLink = origSourceLink;
-            matchedLead.cibilScore = matchedLead.cibilScore || '750+ (Loan Verified)';
-            if (model && !matchedLead.notes) matchedLead.notes = `Bajaj Loan Approved: ${model} (App ID: ${applicationId})`;
-            await matchedLead.save();
-
-            loanApp.leadId = matchedLead.id;
-            await loanApp.save();
-          } else if (matchedJob) {
-            const newLead = await Lead.create({
-              name: matchedJob.name || fullName,
-              phone: matchedJob.phone || mobile,
-              email: matchedJob.email || personal.email_address || null,
-              city: matchedJob.city || city || 'Chennai',
-              status: 'Invested',
-              source: origSource,
-              sourceLink: origSourceLink,
-              leadType: 'partner',
-              autosCount: autoCount,
-              value: capitalVal,
-              totalValue: capitalVal,
-              cibilScore: '750+ (Loan Verified)',
-              notes: `Converted from Job Request. Loan Approved: ${model || 'Bajaj EV Auto'} (App ID: ${applicationId})`
-            });
-            loanApp.leadId = newLead.id;
-            await loanApp.save();
-            matchedLead = newLead;
+            if (model && (!matchedLead.notes || !matchedLead.notes.includes(applicationId))) {
+              matchedLead.notes = [matchedLead.notes, `Bajaj Loan Approved: ${model} (App ID: ${applicationId})`].filter(Boolean).join('\n');
+            }
           }
-        } else {
-          // Candidate or lead exists but is NOT yet converted:
-          // Keep their current pipeline stage (do NOT promote to Invested yet), but record CIBIL/Loan link
-          if (matchedLead) {
-            matchedLead.cibilScore = matchedLead.cibilScore || '750+ (Loan Verified)';
-            await matchedLead.save();
-            loanApp.leadId = matchedLead.id;
-            await loanApp.save();
-          }
+          await matchedLead.save();
         }
       }
     }
@@ -357,62 +318,33 @@ router.patch('/:id/eligibility', protect, checkPermission('finance', 'loan-appli
     app.completedAt = new Date();
     await app.save();
 
-    // Trigger Invested matching ONLY IF set to YES AND candidate/lead is already converted
+    // Trigger Invested matching ONLY IF set to YES AND partner lead is already converted
     let matchedLead = null;
-    if (eligibility === 'YES') {
-      const targetPhoneDigits = cleanPhone(app.mobileNumber);
-      if (targetPhoneDigits.length >= 10) {
-        const allLeads = await Lead.findAll();
-        matchedLead = allLeads.find(l => cleanPhone(l.phone) === targetPhoneDigits);
+    const targetPhoneDigits = cleanPhone(app.mobileNumber);
+    if (targetPhoneDigits.length >= 10) {
+      const allLeads = await Lead.findAll({ where: { leadType: 'partner' } });
+      matchedLead = allLeads.find(l => cleanPhone(l.phone) === targetPhoneDigits);
 
-        const allJobRequests = await JobRequest.findAll();
-        const matchedJob = allJobRequests.find(j => cleanPhone(j.phone) === targetPhoneDigits);
+      if (matchedLead) {
+        app.leadId = matchedLead.id;
+        await app.save();
 
-        const isJobConverted = matchedJob && (matchedJob.status || '').toLowerCase() === 'converted';
-        const isLeadConverted = matchedLead && ['converted', 'invested'].includes((matchedLead.status || '').toLowerCase());
+        if (eligibility === 'YES') {
+          matchedLead.cibilScore = matchedLead.cibilScore || '750+ (Loan Verified)';
+          const isLeadConverted = ['converted', 'invested'].includes((matchedLead.status || '').toLowerCase());
 
-        if (isJobConverted || isLeadConverted) {
-          const autoCount = matchedLead?.autosCount || matchedJob?.autosCount || 1;
-          const capitalVal = autoCount * 100000;
-          const origSource = (matchedJob && matchedJob.source) ? matchedJob.source : ((matchedLead && matchedLead.source) ? matchedLead.source : 'Direct Website');
-          const origSourceLink = (matchedJob && matchedJob.sourceLink) ? matchedJob.sourceLink : ((matchedLead && matchedLead.sourceLink) ? matchedLead.sourceLink : null);
-
-          if (matchedLead) {
+          if (isLeadConverted) {
+            const autoCount = matchedLead.autosCount || 1;
+            const capitalVal = autoCount * 100000;
             matchedLead.status = 'Invested';
             matchedLead.autosCount = autoCount;
             matchedLead.value = capitalVal;
             matchedLead.totalValue = capitalVal;
-            if (origSource && origSource !== 'Direct Website') matchedLead.source = origSource;
-            if (origSourceLink) matchedLead.sourceLink = origSourceLink;
-            matchedLead.cibilScore = matchedLead.cibilScore || '750+ (Loan Verified)';
-            await matchedLead.save();
-            app.leadId = matchedLead.id;
-            await app.save();
-          } else if (matchedJob) {
-            const newLead = await Lead.create({
-              name: matchedJob.name || app.applicantFullName,
-              phone: matchedJob.phone || app.mobileNumber,
-              email: matchedJob.email || null,
-              city: matchedJob.city || app.city || 'Chennai',
-              status: 'Invested',
-              source: origSource,
-              sourceLink: origSourceLink,
-              leadType: 'partner',
-              autosCount: autoCount,
-              value: capitalVal,
-              totalValue: capitalVal,
-              cibilScore: '750+ (Loan Verified)',
-              notes: `Converted from Job Request. Loan Approved (App ID: ${app.applicationId})`
-            });
-            app.leadId = newLead.id;
-            await app.save();
-            matchedLead = newLead;
+            if (!matchedLead.notes || !matchedLead.notes.includes(app.applicationId)) {
+              matchedLead.notes = [matchedLead.notes, `Bajaj Loan Approved (App ID: ${app.applicationId})`].filter(Boolean).join('\n');
+            }
           }
-        } else if (matchedLead) {
-          matchedLead.cibilScore = matchedLead.cibilScore || '750+ (Loan Verified)';
           await matchedLead.save();
-          app.leadId = matchedLead.id;
-          await app.save();
         }
       }
     }

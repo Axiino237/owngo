@@ -146,14 +146,23 @@ router.put('/:id', async (req, res) => {
 
     const { name, color, badgeClass, order, isActive, isDefault } = req.body;
     const updates = {};
-    if (name !== undefined && name.trim()) {
-      updates.name = name.trim();
-      // Keep key in sync if needed, or maintain key for referential integrity
+
+    if (statusItem.isSystem) {
+      if (isActive === false) {
+        return res.status(400).json({ success: false, message: 'Core lifecycle statuses cannot be deactivated' });
+      }
+      if (color !== undefined) updates.color = color;
+      if (badgeClass !== undefined) updates.badgeClass = badgeClass;
+      if (order !== undefined) updates.order = parseInt(order, 10);
+    } else {
+      if (name !== undefined && name.trim()) {
+        updates.name = name.trim();
+      }
+      if (color !== undefined) updates.color = color;
+      if (badgeClass !== undefined) updates.badgeClass = badgeClass;
+      if (order !== undefined) updates.order = parseInt(order, 10);
+      if (isActive !== undefined) updates.isActive = Boolean(isActive);
     }
-    if (color !== undefined) updates.color = color;
-    if (badgeClass !== undefined) updates.badgeClass = badgeClass;
-    if (order !== undefined) updates.order = parseInt(order, 10);
-    if (isActive !== undefined) updates.isActive = Boolean(isActive);
     if (isDefault !== undefined && isDefault) {
       updates.isDefault = true;
       await LeadStatus.update({ isDefault: false }, { where: { id: { [Op.ne]: statusItem.id } } });
@@ -181,6 +190,10 @@ router.delete('/:id', async (req, res) => {
     const statusItem = await LeadStatus.findByPk(req.params.id);
     if (!statusItem) {
       return res.status(404).json({ success: false, message: 'Status not found' });
+    }
+
+    if (statusItem.isSystem) {
+      return res.status(403).json({ success: false, message: 'Core lifecycle statuses cannot be deleted' });
     }
 
     // Check if leads exist with this status
